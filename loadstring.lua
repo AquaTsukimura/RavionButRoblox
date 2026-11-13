@@ -1,0 +1,2 @@
+-- Ravion Client Loader
+local a="https://raw.githubusercontent.com/AquaTsukimura/RavionButRoblox/refs/heads/main/RavionClient.lua"local b=_G.pcall;local c=_G.type;local d=_G.tostring;local e=_G.error;local f=_G.loadstring;local g,h=b(game.HttpGet,game,a)if not g then e("[Ravion] HTTP: "..d(h))end;if c(h)~="string"or#h==0 then e("[Ravion] Invalid source")end;local i,j=f(h)if not i then e("[Ravion] Compile: "..d(j))end;local k,l=b(j)if not k then e("[Ravion] Runtime: "..d(l))end
