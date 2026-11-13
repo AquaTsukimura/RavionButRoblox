@@ -35,7 +35,11 @@ local window = Rayfield:CreateWindow({
     },
 })
 
+local initializing = true
+local initComplete = false
+
 local function notify(title, content, duration)
+    if initializing then return end
     window:Notify({ title = title, content = content, duration = duration or 3 })
 end
 
@@ -219,12 +223,16 @@ local function miniFling(playerToFling)
     fling(playerToFling)
 end
 
+local hiddenParent = getHiddenParent()
+local staleFloating = hiddenParent:FindFirstChild("RavionFloating")
+if staleFloating then staleFloating:Destroy() end
+
 local floatingGui = Instance.new("ScreenGui")
 floatingGui.Name = "RavionFloating"
 floatingGui.ResetOnSpawn = false
 floatingGui.IgnoreGuiInset = true
 floatingGui.DisplayOrder = 5
-floatingGui.Parent = getHiddenParent()
+floatingGui.Parent = hiddenParent
 
 local flashFrame = Instance.new("Frame")
 flashFrame.Name = "Flash"
@@ -669,7 +677,7 @@ universalTab:CreateToggle({
     end,
 })
 universalTab:CreateToggle({
-    name = "Floating Wallhop Button", flag = "WallhopFloat",
+    name = "Floating Wallhop Button", flag = "WallhopFloat", forgetState = true,
     callback = function(state)
         if state then
             makeFloatingButton(
@@ -1319,8 +1327,8 @@ local function doFlickShoot()
             notify("Flick Shoot", "No gun."); return
         end
     end
-    local hrp = murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then
+    local murdererHrp = murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart")
+    if not murdererHrp then
         notify("Flick Shoot", "No HRP."); return
     end
 
@@ -1328,41 +1336,65 @@ local function doFlickShoot()
     task.spawn(function()
         local cam = workspace.CurrentCamera
         if not cam then flickCooldown = false; return end
-        if cam.CameraType ~= Enum.CameraType.Custom then
-            notify("Flick Shoot", "Camera not in standard mode.")
-            flickCooldown = false
-            return
+
+        local origCameraCFrame = cam.CFrame
+        local origCameraType = cam.CameraType
+        local myHrp = char:FindFirstChild("HumanoidRootPart")
+        local origHrpCFrame = myHrp and myHrp.CFrame or nil
+        local restored = false
+
+        local function restore()
+            if restored then return end
+            restored = true
+            if origHrpCFrame and myHrp and myHrp.Parent then
+                pcall(function() myHrp.CFrame = origHrpCFrame end)
+            end
+            if cam then
+                cam.CameraType = origCameraType
+                pcall(function() cam.CFrame = origCameraCFrame end)
+            end
         end
 
-        local originalCFrame = cam.CFrame
-        local originalType = cam.CameraType
-        cam.CameraType = Enum.CameraType.Scriptable
-
         local ok, err = pcall(function()
-            local targetCFrame = CFrame.lookAt(cam.CFrame.Position, hrp.Position)
-            local t1 = TweenService:Create(cam, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = targetCFrame })
+            cam.CameraType = Enum.CameraType.Scriptable
+
+            local camPos = cam.CFrame.Position
+            local targetLook = CFrame.lookAt(camPos, murdererHrp.Position)
+
+            local t1 = TweenService:Create(cam, TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = targetLook })
             t1:Play()
             t1.Completed:Wait()
 
-            local predicted = getPredictedPosition(murderer, shootOffset)
-            char:FindFirstChild("Gun"):FindFirstChild("Shoot"):FireServer(
-                CFrame.new(char.RightHand.Position), CFrame.new(predicted)
-            )
+            if myHrp and myHrp.Parent then
+                local flatLook = Vector3.new(murdererHrp.Position.X, myHrp.Position.Y, murdererHrp.Position.Z)
+                if (flatLook - myHrp.Position).Magnitude > 0.5 then
+                    myHrp.CFrame = CFrame.lookAt(myHrp.Position, flatLook)
+                end
+            end
 
-            local overshootCFrame = targetCFrame * CFrame.Angles(0, math.rad(15), 0)
-            local t2 = TweenService:Create(cam, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = overshootCFrame })
+            local predicted = getPredictedPosition(murderer, shootOffset)
+            local gun = char:FindFirstChild("Gun")
+            if gun and gun:FindFirstChild("Shoot") then
+                gun.Shoot:FireServer(
+                    CFrame.new(char.RightHand.Position),
+                    CFrame.new(predicted)
+                )
+            end
+
+            local overshoot = CFrame.lookAt(camPos, murdererHrp.Position) * CFrame.Angles(0, math.rad(35), 0)
+            local t2 = TweenService:Create(cam, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = overshoot })
             t2:Play()
             t2.Completed:Wait()
 
-            local t3 = TweenService:Create(cam, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), { CFrame = originalCFrame })
-            t3:Play()
-            t3.Completed:Wait()
+            restore()
         end)
 
-        cam.CameraType = originalType
-        if not ok then warn("Flick error:", err) end
+        if not ok then
+            warn("Flick error:", err)
+            restore()
+        end
 
-        task.wait(0.4)
+        task.wait(0.35)
         flickCooldown = false
     end)
 end
@@ -1420,7 +1452,7 @@ mm2Tab:CreateButton({
     callback = doShootMurderer,
 })
 mm2Tab:CreateToggle({
-    name = "Floating Shoot Button", flag = "MM2_FloatingShoot",
+    name = "Floating Shoot Button", flag = "MM2_FloatingShoot", forgetState = true,
     callback = function(state)
         if state then
             makeFloatingButton("ShootMurderer", "Shoot Murderer", doShootMurderer)
@@ -1434,7 +1466,7 @@ mm2Tab:CreateButton({
     callback = doFlickShoot,
 })
 mm2Tab:CreateToggle({
-    name = "Floating Flick Shoot", flag = "MM2_FloatingFlick",
+    name = "Floating Flick Shoot", flag = "MM2_FloatingFlick", forgetState = true,
     callback = function(state)
         if state then
             makeFloatingButton("FlickShoot", "Flick Shoot", doFlickShoot)
@@ -1448,7 +1480,7 @@ mm2Tab:CreateButton({
     callback = function() doKnifeThrow(false) end,
 })
 mm2Tab:CreateToggle({
-    name = "Floating Knife Button", flag = "MM2_FloatingKnife",
+    name = "Floating Knife Button", flag = "MM2_FloatingKnife", forgetState = true,
     callback = function(state)
         if state then
             makeFloatingButton("KnifeThrow", "Throw Knife", function() doKnifeThrow(false) end)
@@ -1944,4 +1976,8 @@ if game.GameId == 6331902150 then
     })
 end
 
-notify("Ravion Client v13.1", "Loaded successfully. Use the tabs on the left to browse features.", 5)
+task.defer(function()
+    task.wait(0.3)
+    initializing = false
+    initComplete = true
+end)
