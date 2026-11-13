@@ -1310,16 +1310,24 @@ end
 local FLICK_BIND = "FlickShootCamera"
 local FLICK = {
     aimTime       = 0.12,
+    minHoldTime   = 0.06,
+    maxHoldTime   = 0.30,
     overshootTime = 0.08,
     returnTime    = 0.20,
     overshoot     = math.rad(40),
+    minTotalRot   = math.rad(210),
     cooldown      = 0.35,
     searchRange   = math.huge,
-    maxDuration   = 2,
+    maxDuration   = 2.5,
 }
 
+local TWO_PI = math.pi * 2
+
 local function flickWrap(a)
-    return (a + math.pi) % (math.pi * 2) - math.pi
+    return (a + math.pi) % TWO_PI - math.pi
+end
+local function rightDelta(fromYaw, toYaw)
+    return -((fromYaw - toYaw) % TWO_PI)
 end
 local function easeOut(t) return 1 - (1 - t) * (1 - t) end
 local function easeInOut(t)
@@ -1387,6 +1395,10 @@ local function runFlick(char, hum, myHrp, target)
     local focusOffset = origFocus.Position - myHrp.Position
     local camDist = (origCFrame.Position - origFocus.Position).Magnitude
 
+    local holdTime = math.clamp(LocalPlayer:GetNetworkPing() * 1.5 + 0.04, FLICK.minHoldTime, FLICK.maxHoldTime)
+    local currentYaw = nil
+    local physicsConn = nil
+
     local function poseCFrame(pitch, yaw)
         local rot = CFrame.fromOrientation(pitch, yaw, origRoll)
         local focusPos = myHrp.Position + focusOffset
@@ -1397,10 +1409,13 @@ local function runFlick(char, hum, myHrp, target)
     local function restore()
         if restored then return end
         restored = true
+        currentYaw = nil
+        if physicsConn then physicsConn:Disconnect(); physicsConn = nil end
         pcall(function() RunService:UnbindFromRenderStep(FLICK_BIND) end)
         pcall(function()
             if myHrp.Parent then
                 myHrp.CFrame = CFrame.new(myHrp.Position) * CFrame.Angles(0, origHrpYaw, 0)
+                myHrp.AssemblyAngularVelocity = Vector3.zero
             end
             if hum.Parent then hum.AutoRotate = origAutoRotate end
         end)
@@ -1419,11 +1434,17 @@ local function runFlick(char, hum, myHrp, target)
         end)
     end
 
+    local function faceCharacter(yaw)
+        myHrp.CFrame = CFrame.new(myHrp.Position) * CFrame.Angles(0, yaw, 0)
+        myHrp.AssemblyAngularVelocity = Vector3.zero
+    end
+
     local function apply(pitch, yaw)
         local cf, focusPos = poseCFrame(pitch, yaw)
         cam.CFrame = cf
         cam.Focus = CFrame.new(focusPos)
-        myHrp.CFrame = CFrame.new(myHrp.Position) * CFrame.Angles(0, yaw, 0)
+        currentYaw = yaw
+        faceCharacter(yaw)
     end
 
     local function fire()
@@ -1439,7 +1460,29 @@ local function runFlick(char, hum, myHrp, target)
     local startTime = os.clock()
     local phase, phaseStart = 1, startTime
     local aimPoint = flickPredict(target, targetHrp)
-    local prevD, aimD, aimPitch, sign = nil, 0, origPitch, 1
+    local prevD, aimD, aimPitch = nil, 0, origPitch
+    local finalYaw, returnDelta = 0, 0
+    local overshootAmt, overshootDur = FLICK.overshoot, FLICK.overshootTime
+
+    local function computeAim()
+        local liveHrp = getLiveHrp(target)
+        if liveHrp then aimPoint = flickPredict(target, liveHrp) end
+
+        local focusPos = myHrp.Position + focusOffset
+        local dir = aimPoint - focusPos
+        if dir.Magnitude < 0.01 then dir = Vector3.new(0, 0, -1) end
+        local liveYaw = math.atan2(-dir.X, -dir.Z)
+        local livePitch = math.asin(math.clamp(dir.Y / dir.Magnitude, -1, 1))
+
+        local d
+        if prevD == nil then
+            d = rightDelta(origYaw, liveYaw)
+        else
+            d = prevD + flickWrap(liveYaw - origYaw - prevD)
+        end
+        prevD = d
+        return d, livePitch
+    end
 
     local function step()
         if not (char.Parent and myHrp.Parent and hum.Health > 0)
@@ -1451,41 +1494,38 @@ local function runFlick(char, hum, myHrp, target)
         local pitch, yaw
 
         if phase == 1 then
-            local liveHrp = getLiveHrp(target)
-            if liveHrp then aimPoint = flickPredict(target, liveHrp) end
-
-            local focusPos = myHrp.Position + focusOffset
-            local dir = aimPoint - focusPos
-            if dir.Magnitude < 0.01 then dir = Vector3.new(0, 0, -1) end
-            local liveYaw = math.atan2(-dir.X, -dir.Z)
-            local livePitch = math.asin(math.clamp(dir.Y / dir.Magnitude, -1, 1))
-
-            local rawD = flickWrap(liveYaw - origYaw)
-            local d = prevD and (prevD + flickWrap(rawD - prevD)) or rawD
-            prevD = d
-
+            local d, livePitch = computeAim()
             local a = math.clamp((now - phaseStart) / FLICK.aimTime, 0, 1)
             local e = easeOut(a)
             yaw = origYaw + d * e
             pitch = origPitch + (livePitch - origPitch) * e
-
             if a >= 1 then
-                apply(pitch, yaw)
-                pcall(fire)
-                aimD, aimPitch = d, livePitch
-                sign = d >= 0 and 1 or -1
                 phase, phaseStart = 2, now
-                return
             end
         elseif phase == 2 then
-            local a = math.clamp((now - phaseStart) / FLICK.overshootTime, 0, 1)
-            yaw = origYaw + aimD + sign * FLICK.overshoot * easeOut(a)
+            local d, livePitch = computeAim()
+            yaw = origYaw + d
+            pitch = livePitch
+            aimD, aimPitch = d, livePitch
+            if now - phaseStart >= holdTime then
+                apply(pitch, yaw)
+                pcall(fire)
+                overshootAmt = math.max(FLICK.overshoot, FLICK.minTotalRot - math.abs(aimD))
+                overshootDur = FLICK.overshootTime * math.max(1, overshootAmt / FLICK.overshoot)
+                finalYaw = origYaw + aimD - overshootAmt
+                returnDelta = flickWrap(origYaw - finalYaw)
+                phase, phaseStart = 3, now
+                return
+            end
+        elseif phase == 3 then
+            local a = math.clamp((now - phaseStart) / overshootDur, 0, 1)
+            yaw = origYaw + aimD - overshootAmt * easeOut(a)
             pitch = aimPitch
-            if a >= 1 then phase, phaseStart = 3, now end
+            if a >= 1 then phase, phaseStart = 4, now end
         else
             local a = math.clamp((now - phaseStart) / FLICK.returnTime, 0, 1)
             local e = easeInOut(a)
-            yaw = origYaw + (aimD + sign * FLICK.overshoot) * (1 - e)
+            yaw = finalYaw + returnDelta * e
             pitch = aimPitch + (origPitch - aimPitch) * e
             if a >= 1 then finished = true end
         end
@@ -1496,6 +1536,11 @@ local function runFlick(char, hum, myHrp, target)
     local ok, err = pcall(function()
         cam.CameraType = Enum.CameraType.Scriptable
         hum.AutoRotate = false
+        physicsConn = RunService.PreSimulation:Connect(function()
+            if currentYaw and myHrp.Parent then
+                faceCharacter(currentYaw)
+            end
+        end)
         RunService:BindToRenderStep(FLICK_BIND, Enum.RenderPriority.Camera.Value + 1, function()
             local sok, serr = pcall(step)
             if not sok then stepErr = serr; finished = true end
