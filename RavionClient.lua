@@ -1360,7 +1360,7 @@ local function flickShootMurderer()
         }
     end
 
-    .Character:WaitForChild("Gun"):WaitForChild("Shoot"):FireServer(unpack(args))
+    LocalPlayer.Character:WaitForChild("Gun"):WaitForChild("Shoot"):FireServer(unpack(args)) -- shi i lowk put ".Character" here lol
 
     local flickOut = ts:Create(cam, TweenInfo.new(0.17, Enum.EasingStyle.Linear), { CFrame = originalCFrame })
     flickOut:Play()
