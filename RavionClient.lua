@@ -35,6 +35,10 @@ local window = Rayfield:CreateWindow({
     },
 })
 
+local function notify(title, content, duration)
+    window:Notify({ title = title, content = content, duration = duration or 3 })
+end
+
 local function getHiddenParent()
     if gethui then
         local ok, hui = pcall(gethui)
@@ -158,7 +162,6 @@ end)()
 
 local function miniFling(playerToFling)
     local lp = LocalPlayer
-    local PlayersSvc = Players
     local savedFPDH = workspace.FallenPartsDestroyHeight
     local function fling(TargetPlayer)
         local Character = lp.Character
@@ -198,7 +201,7 @@ local function miniFling(playerToFling)
                 end
             until targetPart.Velocity.Magnitude > 500 or targetPart.Parent ~= TargetPlayer.Character or tick() > StartTime + TimeToWait
         else
-            window:Notify({ title = "Fling", content = "Can't find a part to fling." })
+            notify("Fling", "Can't find a part to fling.")
         end
         BV:Destroy()
         Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
@@ -216,7 +219,6 @@ local function miniFling(playerToFling)
     fling(playerToFling)
 end
 
-local floatingBtns = {}
 local floatingGui = Instance.new("ScreenGui")
 floatingGui.Name = "RavionFloating"
 floatingGui.ResetOnSpawn = false
@@ -224,79 +226,288 @@ floatingGui.IgnoreGuiInset = true
 floatingGui.DisplayOrder = 5
 floatingGui.Parent = getHiddenParent()
 
-local function makeFloatingButton(id, label, onClick)
-    if floatingBtns[id] and floatingBtns[id].Parent then return floatingBtns[id] end
+local flashFrame = Instance.new("Frame")
+flashFrame.Name = "Flash"
+flashFrame.Size = UDim2.fromScale(1, 1)
+flashFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+flashFrame.BackgroundTransparency = 1
+flashFrame.BorderSizePixel = 0
+flashFrame.ZIndex = 1
+flashFrame.Parent = floatingGui
+
+local floatingBtns = {}
+local savedPositions = {}
+
+local dragState = {
+    button = nil,
+    dragStart = nil,
+    startPos = nil,
+    moved = false,
+    longPressFired = false,
+    longPressThread = nil,
+}
+
+local resizeState = {
+    button = nil,
+    startPos = nil,
+    startSize = nil,
+}
+
+local function closeAllMenus()
+    for _, st in pairs(floatingBtns) do
+        if st.menu then st.menu.Visible = false end
+    end
+end
+
+local function makeFloatingButton(id, labelOrFn, onClick)
+    if floatingBtns[id] and floatingBtns[id].wrapper and floatingBtns[id].wrapper.Parent then
+        return floatingBtns[id]
+    end
+
+    local wrapper = Instance.new("Frame")
+    wrapper.Name = "Ravion_" .. id
+    wrapper.Size = UDim2.fromOffset(180, 48)
+    wrapper.Position = savedPositions[id] or UDim2.fromOffset(20, 200 + (#floatingBtns * 55))
+    wrapper.BackgroundTransparency = 1
+    wrapper.ZIndex = 2
+    wrapper.Parent = floatingGui
 
     local btn = Instance.new("TextButton")
-    btn.Name = "Ravion_" .. id
-    btn.Text = label
-    btn.Size = UDim2.fromOffset(160, 44)
-    btn.Position = UDim2.fromOffset(20, 200)
+    btn.Name = "Body"
+    btn.Size = UDim2.fromScale(1, 1)
     btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
     btn.BackgroundTransparency = 0.1
+    btn.Text = ""
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 14
+    btn.TextWrapped = true
     btn.BorderSizePixel = 0
     btn.AutoButtonColor = false
-    btn.Active = true
-    btn.Parent = floatingGui
-
+    btn.ZIndex = 2
+    btn.Parent = wrapper
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+
     local stroke = Instance.new("UIStroke", btn)
     stroke.Color = Color3.fromRGB(120, 180, 255)
-    stroke.Thickness = 1
+    stroke.Thickness = 1.5
     stroke.Transparency = 0.3
 
-    local dragging, dragStart, startPos, moved = false, nil, nil, false
+    local lockIcon = Instance.new("TextLabel")
+    lockIcon.Name = "LockIcon"
+    lockIcon.Size = UDim2.fromOffset(18, 18)
+    lockIcon.Position = UDim2.fromOffset(5, 3)
+    lockIcon.BackgroundTransparency = 1
+    lockIcon.Text = "🔒"
+    lockIcon.TextColor3 = Color3.fromRGB(255, 200, 50)
+    lockIcon.TextSize = 14
+    lockIcon.Font = Enum.Font.GothamBold
+    lockIcon.Visible = false
+    lockIcon.ZIndex = 3
+    lockIcon.Parent = btn
+
+    local grip = Instance.new("TextButton")
+    grip.Name = "ResizeGrip"
+    grip.Size = UDim2.fromOffset(14, 14)
+    grip.Position = UDim2.new(1, -16, 1, -16)
+    grip.BackgroundColor3 = Color3.fromRGB(120, 180, 255)
+    grip.BackgroundTransparency = 0.4
+    grip.Text = ""
+    grip.BorderSizePixel = 0
+    grip.AutoButtonColor = false
+    grip.ZIndex = 5
+    grip.Parent = wrapper
+    Instance.new("UICorner", grip).CornerRadius = UDim.new(0, 3)
+
+    local menu = Instance.new("Frame")
+    menu.Name = "ContextMenu"
+    menu.Size = UDim2.fromOffset(120, 68)
+    menu.Position = UDim2.new(0, 0, 1, 5)
+    menu.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    menu.BorderSizePixel = 0
+    menu.Visible = false
+    menu.ZIndex = 10
+    menu.Parent = wrapper
+    Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 6)
+    local mstroke = Instance.new("UIStroke", menu)
+    mstroke.Color = Color3.fromRGB(120, 180, 255)
+    mstroke.Transparency = 0.4
+
+    local lockBtn = Instance.new("TextButton")
+    lockBtn.Size = UDim2.new(1, -8, 0, 26)
+    lockBtn.Position = UDim2.fromOffset(4, 4)
+    lockBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    lockBtn.Text = "Lock"
+    lockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lockBtn.Font = Enum.Font.Gotham
+    lockBtn.TextSize = 13
+    lockBtn.BorderSizePixel = 0
+    lockBtn.ZIndex = 11
+    lockBtn.Parent = menu
+    Instance.new("UICorner", lockBtn).CornerRadius = UDim.new(0, 4)
+
+    local resetBtn = Instance.new("TextButton")
+    resetBtn.Size = UDim2.new(1, -8, 0, 26)
+    resetBtn.Position = UDim2.fromOffset(4, 34)
+    resetBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    resetBtn.Text = "Reset Size"
+    resetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    resetBtn.Font = Enum.Font.Gotham
+    resetBtn.TextSize = 13
+    resetBtn.BorderSizePixel = 0
+    resetBtn.ZIndex = 11
+    resetBtn.Parent = menu
+    Instance.new("UICorner", resetBtn).CornerRadius = UDim.new(0, 4)
+
+    local state = {
+        id = id,
+        wrapper = wrapper,
+        btn = btn,
+        grip = grip,
+        menu = menu,
+        lockIcon = lockIcon,
+        lockBtn = lockBtn,
+        stroke = stroke,
+        locked = false,
+        originalSize = wrapper.Size,
+        onClick = onClick,
+    }
+
+    state.updateLabel = function()
+        btn.Text = type(labelOrFn) == "function" and labelOrFn() or labelOrFn
+    end
+    state.updateLabel()
 
     btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            moved = false
-            dragStart = input.Position
-            startPos = btn.Position
-        end
-    end)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1
+        and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        if dragState.button then return end
 
-    UserInputService.InputChanged:Connect(function(input)
-        if not dragging then return end
-        if input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch then
-            local delta = input.Position - dragStart
-            if delta.Magnitude > 4 then
-                moved = true
-                btn.Position = UDim2.new(
-                    startPos.X.Scale, startPos.X.Offset + delta.X,
-                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
-                )
+        dragState.button = state
+        dragState.dragStart = input.Position
+        dragState.startPos = wrapper.Position
+        dragState.moved = false
+        dragState.longPressFired = false
+
+        if dragState.longPressThread then task.cancel(dragState.longPressThread) end
+        dragState.longPressThread = task.delay(0.6, function()
+            if dragState.button == state and not dragState.moved then
+                dragState.longPressFired = true
+                closeAllMenus()
+                menu.Visible = true
             end
-        end
+        end)
     end)
 
-    UserInputService.InputEnded:Connect(function(input)
-        if not dragging then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-            if not moved then
-                local ok, err = pcall(onClick)
-                if not ok then warn("Floating button error:", err) end
-            end
-        end
+    grip.InputBegan:Connect(function(input)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1
+        and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        resizeState.button = state
+        resizeState.startPos = input.Position
+        resizeState.startSize = wrapper.Size
     end)
 
-    floatingBtns[id] = btn
-    return btn
+    lockBtn.MouseButton1Click:Connect(function()
+        state.locked = not state.locked
+        lockBtn.Text = state.locked and "Unlock" or "Lock"
+        lockIcon.Visible = state.locked
+        stroke.Color = state.locked and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(120, 180, 255)
+        menu.Visible = false
+    end)
+
+    resetBtn.MouseButton1Click:Connect(function()
+        wrapper.Size = state.originalSize
+        menu.Visible = false
+    end)
+
+    floatingBtns[id] = state
+    return state
 end
 
 local function removeFloatingButton(id)
     if floatingBtns[id] then
-        floatingBtns[id]:Destroy()
+        if dragState.button == floatingBtns[id] then
+            if dragState.longPressThread then task.cancel(dragState.longPressThread) end
+            dragState.button = nil
+        end
+        if resizeState.button == floatingBtns[id] then
+            resizeState.button = nil
+        end
+        if floatingBtns[id].wrapper then floatingBtns[id].wrapper:Destroy() end
         floatingBtns[id] = nil
     end
 end
+
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType ~= Enum.UserInputType.MouseMovement
+    and input.UserInputType ~= Enum.UserInputType.Touch then return end
+
+    if dragState.button and not dragState.button.locked then
+        local delta = input.Position - dragState.dragStart
+        if delta.Magnitude > 6 then
+            dragState.moved = true
+            if dragState.longPressThread then task.cancel(dragState.longPressThread); dragState.longPressThread = nil end
+            dragState.button.wrapper.Position = UDim2.new(
+                dragState.startPos.X.Scale, dragState.startPos.X.Offset + delta.X,
+                dragState.startPos.Y.Scale, dragState.startPos.Y.Offset + delta.Y
+            )
+        end
+    end
+
+    if resizeState.button then
+        local delta = input.Position - resizeState.startPos
+        local newX = math.clamp(resizeState.startSize.X.Offset + delta.X, 80, 500)
+        local newY = math.clamp(resizeState.startSize.Y.Offset + delta.Y, 30, 200)
+        resizeState.button.wrapper.Size = UDim2.fromOffset(newX, newY)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1
+    and input.UserInputType ~= Enum.UserInputType.Touch then return end
+
+    if dragState.longPressThread then task.cancel(dragState.longPressThread); dragState.longPressThread = nil end
+
+    if dragState.button then
+        local state = dragState.button
+        local shouldClick = not dragState.moved and not dragState.longPressFired
+        savedPositions[state.id] = state.wrapper.Position
+        dragState.button = nil
+        dragState.moved = false
+        dragState.longPressFired = false
+
+        if shouldClick then
+            local ok, err = pcall(state.onClick)
+            if not ok then warn("Floating button error:", err) end
+        end
+    end
+
+    if resizeState.button then
+        resizeState.button = nil
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Escape then
+        closeAllMenus()
+        return
+    end
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1
+    and input.UserInputType ~= Enum.UserInputType.Touch then return end
+
+    local pos = input.Position
+    for _, st in pairs(floatingBtns) do
+        if st.menu and st.menu.Visible then
+            local mAbs = st.menu.AbsolutePosition
+            local mSize = st.menu.AbsoluteSize
+            local inside = pos.X >= mAbs.X and pos.X <= mAbs.X + mSize.X
+                       and pos.Y >= mAbs.Y and pos.Y <= mAbs.Y + mSize.Y
+            if not inside then
+                st.menu.Visible = false
+            end
+        end
+    end
+end)
 
 local ws, fov = 16, 70
 local loopFovWs = false
@@ -335,6 +546,58 @@ local function getRayHitPosition()
     return result and result.Position or nil
 end
 
+local wallhopEnabled = false
+local wallhopLastCamX = workspace.CurrentCamera and workspace.CurrentCamera.CFrame.LookVector.X or 0
+local wallhopCooldown = 0
+local wallhopFlashTween = nil
+
+local function wallhopFlash()
+    if wallhopFlashTween then wallhopFlashTween:Cancel() end
+    flashFrame.BackgroundTransparency = 0.88
+    wallhopFlashTween = TweenService:Create(
+        flashFrame,
+        TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { BackgroundTransparency = 1 }
+    )
+    wallhopFlashTween:Play()
+end
+
+RunService.RenderStepped:Connect(function()
+    if not wallhopEnabled then
+        local cam = workspace.CurrentCamera
+        if cam then wallhopLastCamX = cam.CFrame.LookVector.X end
+        return
+    end
+
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+
+    local currentX = cam.CFrame.LookVector.X
+    local diff = currentX - wallhopLastCamX
+    wallhopLastCamX = currentX
+
+    local now = os.clock()
+    if now < wallhopCooldown then return end
+    if diff <= 0.15 then return end
+
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then return end
+    if hum:GetState() == Enum.HumanoidStateType.Seated then return end
+
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = { char }
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local hit = workspace:Raycast(root.Position, root.CFrame.LookVector * 3, params)
+    if not hit or not hit.Instance or not hit.Instance:IsA("BasePart") or not hit.Instance.CanCollide then return end
+
+    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    wallhopCooldown = now + 0.05
+    wallhopFlash()
+end)
+
 local universalTab = window:CreateTab({ name = "Universal", icon = 93364949241311 })
 
 universalTab:CreateSection({ name = "About" })
@@ -344,7 +607,7 @@ universalTab:CreateButton({
     name = "Join our Discord",
     callback = function()
         if setclipboard then setclipboard("https://discord.gg/2jbYxvDkxr") end
-        window:Notify({ title = "Discord", content = "Link copied to clipboard!" })
+        notify("Discord", "Link copied to clipboard!")
     end,
 })
 
@@ -396,6 +659,33 @@ universalTab:CreateToggle({
     callback = function(state) infJumpOnlyTwo = state; infJumps = 0 end,
 })
 
+universalTab:CreateSection({ name = "Wallhop" })
+universalTab:CreateToggle({
+    name = "Wallhop", flag = "Wallhop",
+    callback = function(state)
+        wallhopEnabled = state
+        if floatingBtns["Wallhop"] then floatingBtns["Wallhop"].updateLabel() end
+        notify("Wallhop", state and "Enabled" or "Disabled")
+    end,
+})
+universalTab:CreateToggle({
+    name = "Floating Wallhop Button", flag = "WallhopFloat",
+    callback = function(state)
+        if state then
+            makeFloatingButton(
+                "Wallhop",
+                function() return "Wallhop " .. (wallhopEnabled and "ON" or "OFF") end,
+                function()
+                    wallhopEnabled = not wallhopEnabled
+                    if floatingBtns["Wallhop"] then floatingBtns["Wallhop"].updateLabel() end
+                end
+            )
+        else
+            removeFloatingButton("Wallhop")
+        end
+    end,
+})
+
 universalTab:CreateSection({ name = "Hitbox" })
 local hitboxExp = 1
 local aggressiveExp = false
@@ -424,7 +714,7 @@ universalTab:CreateInput({
                 end
             end
         end
-        window:Notify({ title = "Hitbox", content = "Hitboxes expanded." })
+        notify("Hitbox", "Hitboxes expanded.")
     end,
 })
 universalTab:CreateToggle({
@@ -474,7 +764,7 @@ universalTab:CreateInput({
         if not hu then return end
         hu.WalkSpeed = tonumber(text) or 16
         ws = tonumber(text) or 16
-        window:Notify({ title = "Walkspeed", content = "Set to " .. hu.WalkSpeed })
+        notify("Walkspeed", "Set to " .. hu.WalkSpeed)
     end,
 })
 universalTab:CreateButton({
@@ -484,7 +774,7 @@ universalTab:CreateButton({
         if not hu then return end
         ws = ws + wsIncrement
         hu.WalkSpeed = hu.WalkSpeed + wsIncrement
-        window:Notify({ title = "Walkspeed", content = "Now " .. hu.WalkSpeed })
+        notify("Walkspeed", "Now " .. hu.WalkSpeed)
     end,
 })
 universalTab:CreateButton({
@@ -494,7 +784,7 @@ universalTab:CreateButton({
         if not hu then return end
         ws = ws - wsIncrement
         hu.WalkSpeed = hu.WalkSpeed - wsIncrement
-        window:Notify({ title = "Walkspeed", content = "Now " .. hu.WalkSpeed })
+        notify("Walkspeed", "Now " .. hu.WalkSpeed)
     end,
 })
 universalTab:CreateInput({
@@ -536,7 +826,7 @@ universalTab:CreateInput({
     callback = function(text)
         local targetName = getPlayer(text, LocalPlayer)
         if not targetName then
-            window:Notify({ title = "Teleport", content = "Player not found." }); return
+            notify("Teleport", "Player not found."); return
         end
         local tp = Players:FindFirstChild(targetName)
         if not (tp and tp.Character) then return end
@@ -585,7 +875,7 @@ UserInputService.InputBegan:Connect(function(inp, proc)
     and inp.UserInputType == Enum.UserInputType.MouseButton1 then
         local pos = getRayHitPosition()
         if not pos then
-            window:Notify({ title = "Teleport", content = "Couldn't find a place to teleport to." }); return
+            notify("Teleport", "Couldn't find a place to teleport to."); return
         end
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if hrp then hrp.CFrame = CFrame.new(pos) end
@@ -598,10 +888,10 @@ universalTab:CreateInput({
     callback = function(text)
         local name = getPlayer(text, LocalPlayer)
         if not name or not Players:FindFirstChild(name) then
-            window:Notify({ title = "Aim Lock", content = "Player not found." }); return
+            notify("Aim Lock", "Player not found."); return
         end
         aimTarget = Players:FindFirstChild(name)
-        window:Notify({ title = "Aim Lock", content = "Target set to " .. aimTarget.Name })
+        notify("Aim Lock", "Target set to " .. aimTarget.Name)
     end,
 })
 universalTab:CreateButton({
@@ -609,7 +899,7 @@ universalTab:CreateButton({
     callback = function()
         if aimlockConn then aimlockConn:Disconnect() end
         if not aimTarget then
-            window:Notify({ title = "Aim Lock", content = "Set a target first." }); return
+            notify("Aim Lock", "Set a target first."); return
         end
         aimlockConn = RunService.RenderStepped:Connect(function()
             if not aimTarget then return end
@@ -617,14 +907,14 @@ universalTab:CreateButton({
             if not hrp then return end
             workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, hrp.Position)
         end)
-        window:Notify({ title = "Aim Lock", content = "Aim lock is now on." })
+        notify("Aim Lock", "Aim lock is now on.")
     end,
 })
 universalTab:CreateButton({
     name = "Aim Lock Off",
     callback = function()
         if aimlockConn then aimlockConn:Disconnect(); aimlockConn = nil end
-        window:Notify({ title = "Aim Lock", content = "Aim lock is now off." })
+        notify("Aim Lock", "Aim lock is now off.")
     end,
 })
 
@@ -634,20 +924,20 @@ universalTab:CreateInput({
     callback = function(text)
         local name = getPlayer(text, LocalPlayer)
         if not name or not Players:FindFirstChild(name) then
-            window:Notify({ title = "Fling", content = "Player not found." }); return
+            notify("Fling", "Player not found."); return
         end
         playerToFling = Players:FindFirstChild(name)
-        window:Notify({ title = "Fling", content = "Target set to " .. playerToFling.Name })
+        notify("Fling", "Target set to " .. playerToFling.Name)
     end,
 })
 universalTab:CreateButton({
     name = "Fling Target",
     callback = function()
         if not playerToFling or not Players:FindFirstChild(playerToFling.Name) then
-            window:Notify({ title = "Fling", content = "Target a player first." }); return
+            notify("Fling", "Target a player first."); return
         end
         if antiFling then
-            window:Notify({ title = "Fling", content = "Turn off anti-fling to use fling." }); return
+            notify("Fling", "Turn off anti-fling to use fling."); return
         end
         miniFling(playerToFling)
     end,
@@ -657,14 +947,14 @@ universalTab:CreateToggle({
     callback = function(state)
         antiFling = state
         if state then
-            window:Notify({ title = "Anti-Fling", content = "Activated." })
+            notify("Anti-Fling", "Activated.")
             flingDetectionCon = RunService.Heartbeat:Connect(function()
                 for _, pl in ipairs(Players:GetPlayers()) do
                     if pl.Character and pl.Character:IsDescendantOf(workspace) and pl.Character.PrimaryPart then
                         if pl.Character.PrimaryPart.AssemblyAngularVelocity.Magnitude > 50
                         or pl.Character.PrimaryPart.AssemblyLinearVelocity.Magnitude > 100 then
                             if not detectedPlayers[pl.Name] then
-                                window:Notify({ title = "Anti-Fling", content = "Flinger detected: " .. pl.Name })
+                                notify("Anti-Fling", "Flinger detected: " .. pl.Name)
                                 detectedPlayers[pl.Name] = true
                             end
                             for _, p in ipairs(pl.Character:GetDescendants()) do
@@ -683,7 +973,7 @@ universalTab:CreateToggle({
                 local pp = LocalPlayer.Character and LocalPlayer.Character.PrimaryPart
                 if pp then
                     if pp.AssemblyLinearVelocity.Magnitude > 250 or pp.AssemblyAngularVelocity.Magnitude > 250 then
-                        window:Notify({ title = "Anti-Fling", content = "You were flung - neutralizing." })
+                        notify("Anti-Fling", "You were flung - neutralizing.")
                         pp.AssemblyLinearVelocity = Vector3.zero
                         pp.AssemblyAngularVelocity = Vector3.zero
                         if antiFlingLastPos ~= Vector3.zero then
@@ -698,7 +988,7 @@ universalTab:CreateToggle({
             if flingDetectionCon then flingDetectionCon:Disconnect() end
             if flingNeutralizerCon then flingNeutralizerCon:Disconnect() end
             detectedPlayers = {}
-            window:Notify({ title = "Anti-Fling", content = "Deactivated." })
+            notify("Anti-Fling", "Deactivated.")
         end
     end,
 })
@@ -774,13 +1064,13 @@ universalTab:CreateButton({
     name = "Reclip",
     callback = function()
         if noclipLoop then noclipLoop:Disconnect(); noclipLoop = nil end
-        window:Notify({ title = "Reclip", content = "You may need to reset your character." })
+        notify("Reclip", "You may need to reset your character.")
     end,
 })
 universalTab:CreateButton({
     name = "Get Ping",
     callback = function()
-        window:Notify({ title = "Ping", content = math.floor(LocalPlayer:GetNetworkPing() * 1000) .. " ms" })
+        notify("Ping", math.floor(LocalPlayer:GetNetworkPing() * 1000) .. " ms")
     end,
 })
 universalTab:CreateButton({
@@ -807,8 +1097,8 @@ local loopThrow       = false
 local shootOffset     = 2.8
 local offsetToPingMult = 1
 local playerData      = {}
-local simulateKnifeThrow = false
 local espRespawnConns = {}
+local flickCooldown   = false
 
 local function findMurderer()
     for _, i in ipairs(Players:GetPlayers()) do
@@ -934,11 +1224,11 @@ end
 
 local function doShootMurderer()
     if findSheriff() ~= LocalPlayer then
-        window:Notify({ title = "Shoot", content = "You're not sheriff/hero." }); return
+        notify("Shoot", "You're not sheriff/hero."); return
     end
     local murderer = findMurderer() or findSheriffThatsNotMe()
     if not murderer then
-        window:Notify({ title = "Shoot", content = "No target." }); return
+        notify("Shoot", "No target."); return
     end
     local char = LocalPlayer.Character
     if not char then return end
@@ -948,12 +1238,12 @@ local function doShootMurderer()
             hum:EquipTool(LocalPlayer.Backpack:FindFirstChild("Gun"))
             task.wait(0.1)
         else
-            window:Notify({ title = "Shoot", content = "No gun." }); return
+            notify("Shoot", "No gun."); return
         end
     end
     local hrp = murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then
-        window:Notify({ title = "Shoot", content = "No HRP." }); return
+        notify("Shoot", "No HRP."); return
     end
     local predicted = getPredictedPosition(murderer, shootOffset)
     local args
@@ -969,7 +1259,7 @@ end
 
 local function doKnifeThrow(silent)
     if findMurderer() ~= LocalPlayer then
-        if not silent then window:Notify({ title = "Knife", content = "You're not murderer." }) end
+        if not silent then notify("Knife", "You're not murderer.") end
         return
     end
     local char = LocalPlayer.Character
@@ -980,7 +1270,7 @@ local function doKnifeThrow(silent)
             hum:EquipTool(LocalPlayer.Backpack:FindFirstChild("Knife"))
             task.wait(0.1)
         else
-            if not silent then window:Notify({ title = "Knife", content = "No knife." }) end
+            if not silent then notify("Knife", "No knife.") end
             return
         end
     end
@@ -997,7 +1287,7 @@ local function doKnifeThrow(silent)
         end
     end
     if not (nearest and nearest.Character) then
-        if not silent then window:Notify({ title = "Knife", content = "No target." }) end
+        if not silent then notify("Knife", "No target.") end
         return
     end
     local nhrp = nearest.Character:FindFirstChild("HumanoidRootPart")
@@ -1006,6 +1296,74 @@ local function doKnifeThrow(silent)
     if spawnAtPlayer then args[1] = CFrame.new(nhrp.Position + (nhrp.CFrame.LookVector * 5)) end
     pcall(function()
         char:WaitForChild("Knife", 2):WaitForChild("Events", 2):WaitForChild("KnifeThrown", 2):FireServer(unpack(args))
+    end)
+end
+
+local function doFlickShoot()
+    if flickCooldown then return end
+    if findSheriff() ~= LocalPlayer then
+        notify("Flick Shoot", "You're not sheriff/hero."); return
+    end
+    local murderer = findMurderer() or findSheriffThatsNotMe()
+    if not murderer then
+        notify("Flick Shoot", "No target."); return
+    end
+    local char = LocalPlayer.Character
+    if not char then return end
+    if not char:FindFirstChild("Gun") then
+        local hum = char:FindFirstChild("Humanoid")
+        if LocalPlayer.Backpack:FindFirstChild("Gun") then
+            hum:EquipTool(LocalPlayer.Backpack:FindFirstChild("Gun"))
+            task.wait(0.12)
+        else
+            notify("Flick Shoot", "No gun."); return
+        end
+    end
+    local hrp = murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        notify("Flick Shoot", "No HRP."); return
+    end
+
+    flickCooldown = true
+    task.spawn(function()
+        local cam = workspace.CurrentCamera
+        if not cam then flickCooldown = false; return end
+        if cam.CameraType ~= Enum.CameraType.Custom then
+            notify("Flick Shoot", "Camera not in standard mode.")
+            flickCooldown = false
+            return
+        end
+
+        local originalCFrame = cam.CFrame
+        local originalType = cam.CameraType
+        cam.CameraType = Enum.CameraType.Scriptable
+
+        local ok, err = pcall(function()
+            local targetCFrame = CFrame.lookAt(cam.CFrame.Position, hrp.Position)
+            local t1 = TweenService:Create(cam, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = targetCFrame })
+            t1:Play()
+            t1.Completed:Wait()
+
+            local predicted = getPredictedPosition(murderer, shootOffset)
+            char:FindFirstChild("Gun"):FindFirstChild("Shoot"):FireServer(
+                CFrame.new(char.RightHand.Position), CFrame.new(predicted)
+            )
+
+            local overshootCFrame = targetCFrame * CFrame.Angles(0, math.rad(15), 0)
+            local t2 = TweenService:Create(cam, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = overshootCFrame })
+            t2:Play()
+            t2.Completed:Wait()
+
+            local t3 = TweenService:Create(cam, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), { CFrame = originalCFrame })
+            t3:Play()
+            t3.Completed:Wait()
+        end)
+
+        cam.CameraType = originalType
+        if not ok then warn("Flick error:", err) end
+
+        task.wait(0.4)
+        flickCooldown = false
     end)
 end
 
@@ -1072,6 +1430,20 @@ mm2Tab:CreateToggle({
     end,
 })
 mm2Tab:CreateButton({
+    name = "Flick Shoot Murderer",
+    callback = doFlickShoot,
+})
+mm2Tab:CreateToggle({
+    name = "Floating Flick Shoot", flag = "MM2_FloatingFlick",
+    callback = function(state)
+        if state then
+            makeFloatingButton("FlickShoot", "Flick Shoot", doFlickShoot)
+        else
+            removeFloatingButton("FlickShoot")
+        end
+    end,
+})
+mm2Tab:CreateButton({
     name = "Knife Throw to Closest",
     callback = function() doKnifeThrow(false) end,
 })
@@ -1100,11 +1472,11 @@ mm2Tab:CreateButton({
     name = "Delayed Shoot Murderer",
     callback = function()
         if findSheriff() ~= LocalPlayer then
-            window:Notify({ title = "Shoot", content = "You're not sheriff." }); return
+            notify("Shoot", "You're not sheriff."); return
         end
         local murderer = findMurderer() or findSheriffThatsNotMe()
         if not murderer then
-            window:Notify({ title = "Shoot", content = "No target." }); return
+            notify("Shoot", "No target."); return
         end
         local char = LocalPlayer.Character
         if not char then return end
@@ -1169,11 +1541,11 @@ mm2Tab:CreateButton({
     name = "Kill Everyone (Murderer)",
     callback = function()
         if findMurderer() ~= LocalPlayer then
-            window:Notify({ title = "Kill All", content = "You're not murderer." }); return
+            notify("Kill All", "You're not murderer."); return
         end
         local char = LocalPlayer.Character
         if not char or not char:FindFirstChild("Knife") then
-            window:Notify({ title = "Kill All", content = "No knife equipped." }); return
+            notify("Kill All", "No knife equipped."); return
         end
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -1190,7 +1562,7 @@ mm2Tab:CreateButton({
     name = "Hold Everyone Hostage",
     callback = function()
         if findMurderer() ~= LocalPlayer then
-            window:Notify({ title = "Hostage", content = "You're not murderer." }); return
+            notify("Hostage", "You're not murderer."); return
         end
         local char = LocalPlayer.Character
         if not char or not char:FindFirstChild("HumanoidRootPart") then return end
@@ -1200,7 +1572,7 @@ mm2Tab:CreateButton({
                 p.Character.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + char.HumanoidRootPart.CFrame.LookVector * 5
             end
         end
-        window:Notify({ title = "Hostage", content = "All players held in place." })
+        notify("Hostage", "All players held in place.")
     end,
 })
 mm2Tab:CreateButton({
@@ -1231,28 +1603,28 @@ mm2Tab:CreateButton({
     name = "Fling Sheriff",
     callback = function()
         local s = findSheriff()
-        if s then miniFling(s) else window:Notify({ title = "Fling", content = "No sheriff." }) end
+        if s then miniFling(s) else notify("Fling", "No sheriff.") end
     end,
 })
 mm2Tab:CreateButton({
     name = "Fling Murderer",
     callback = function()
         local m = findMurderer()
-        if m then miniFling(m) else window:Notify({ title = "Fling", content = "No murderer." }) end
+        if m then miniFling(m) else notify("Fling", "No murderer.") end
     end,
 })
 mm2Tab:CreateButton({
     name = "Copy Murderer Username",
     callback = function()
         local m = findMurderer()
-        if m and setclipboard then setclipboard(m.Name); window:Notify({ title = "Copy", content = "Copied " .. m.Name }) end
+        if m and setclipboard then setclipboard(m.Name); notify("Copy", "Copied " .. m.Name) end
     end,
 })
 mm2Tab:CreateButton({
     name = "Copy Sheriff Username",
     callback = function()
         local s = findSheriff()
-        if s and setclipboard then setclipboard(s.Name); window:Notify({ title = "Copy", content = "Copied " .. s.Name }) end
+        if s and setclipboard then setclipboard(s.Name); notify("Copy", "Copied " .. s.Name) end
     end,
 })
 mm2Tab:CreateToggle({
@@ -1370,7 +1742,7 @@ if game.GameId == 372226183 then
         callback = function()
             LocalPlayer.CameraMode = Enum.CameraMode.Classic
             LocalPlayer.CameraMaxZoomDistance = 400
-            window:Notify({ title = "Camera", content = "Third-person unlocked." })
+            notify("Camera", "Third-person unlocked.")
         end,
     })
     ftfTab:CreateButton({ name = "Reload ESP", callback = reloadFTFESP })
@@ -1420,7 +1792,7 @@ if game.GameId == 6331902150 then
     local function addForsakenItem(i)
         local cfg = { AccentColor = Color3.new(0.031,0.917,1), ArrowShow = false, ShowLabel = false, GroupName = "items" }
         if prioritizeMedkit and i.Name == "Medkit" then
-            window:Notify({ title = "Forsaken", content = "Medkit spawned!" })
+            notify("Forsaken", "Medkit spawned!")
             cfg = { AccentColor = Color3.new(1,1,1), ArrowShow = true, ArrowMinDistance = 999999, ArrowSize = UDim2.new(0,40,0,40), LabelText = "Medkit", ShowLabel = true, GroupName = "items" }
         end
         forsakenEsp:Add(i, cfg)
@@ -1506,7 +1878,7 @@ if game.GameId == 6331902150 then
         name = "Finish Nearest Generator",
         callback = function()
             if solveCD and not noCooldownSolve then
-                window:Notify({ title = "Forsaken", content = "Cooldown (4s)" }); return
+                notify("Forsaken", "Cooldown (4s)"); return
             end
             solveCD = true
             local char = LocalPlayer.Character
@@ -1572,8 +1944,4 @@ if game.GameId == 6331902150 then
     })
 end
 
-window:Notify({
-    title = "Ravion Client v13.1",
-    content = "Loaded successfully. Use the tabs on the left to browse features.",
-    duration = 6,
-})
+notify("Ravion Client v13.1", "Loaded successfully. Use the tabs on the left to browse features.", 5)
