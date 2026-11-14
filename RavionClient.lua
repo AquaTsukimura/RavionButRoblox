@@ -29,8 +29,8 @@ local window = Rayfield:CreateWindow({
     sidebarLayout = true,
     theme = "cobalt",
     configuration = {
-        autoSave   = true,
-        autoLoad   = true,
+        autoSave   = false,
+        autoLoad   = false,
         fileName   = "RavionClient",
     },
 })
@@ -1307,65 +1307,228 @@ local function doKnifeThrow(silent)
     end)
 end
 
--- lmao i finally got a working one, ty sanu
-local TweenService = game:GetService("TweenService")
-local function flickShootMurderer()
-	local ts = TweenService
-    if findSheriff() ~= LocalPlayer then
-        notify("You're not sheriff/hero.")
-        return
-    end
+local FLICK_BIND = "FlickShootCamera"
+local FLICK = {
+    spin          = math.rad(210),
+    spinTime      = 0.18,
+    minHoldTime   = 0.06,
+    maxHoldTime   = 0.30,
+    returnTime    = 0.20,
+    cooldown      = 0.35,
+    searchRange   = math.huge,
+    maxDuration   = 2.5,
+}
 
-    local murderer = findMurderer()
-    if not murderer or not murderer.Character then
-        notify("No murderer found.")
-        return
-    end
+local TWO_PI = math.pi * 2
 
-    local murdererHRP = murderer.Character:FindFirstChild("HumanoidRootPart")
-    if not murdererHRP then
-        notify("Murderer has no HumanoidRootPart.")
-        return
-    end
+local function flickWrap(a)
+    return (a + math.pi) % TWO_PI - math.pi
+end
+local function easeOut(t) return 1 - (1 - t) * (1 - t) end
+local function easeInOut(t)
+    return t < 0.5 and 2 * t * t or 1 - ((-2 * t + 2) ^ 2) / 2
+end
 
-    if not LocalPlayer.Character:FindFirstChild("Gun") then
-        local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
-        if LocalPlayer.Backpack:FindFirstChild("Gun") then
-            hum:EquipTool(LocalPlayer.Backpack:FindFirstChild("Gun"))
-        else
-            notify("You don't have the gun..?")
-            return
+local function getLiveHrp(plr)
+    local c = plr and plr.Character
+    local h = c and c:FindFirstChildOfClass("Humanoid")
+    local r = c and c:FindFirstChild("HumanoidRootPart")
+    if h and h.Health > 0 and r then return r end
+    return nil
+end
+
+local function resolveFlickTarget(fromPos)
+    local candidate = findMurderer() or findSheriffThatsNotMe()
+    if candidate and candidate ~= LocalPlayer and getLiveHrp(candidate) then
+        return candidate
+    end
+    local best, bestDist = nil, FLICK.searchRange
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local hrp = getLiveHrp(plr)
+            local backpack = plr:FindFirstChild("Backpack")
+            local hasKnife = plr.Character and (
+                plr.Character:FindFirstChild("Knife")
+                or (backpack and backpack:FindFirstChild("Knife"))
+            )
+            if hrp and hasKnife then
+                local d = (hrp.Position - fromPos).Magnitude
+                if d <= bestDist then best, bestDist = plr, d end
+            end
         end
     end
+    return best
+end
 
+local function flickPredict(target, hrp)
+    local ok, pos = pcall(getPredictedPosition, target, shootOffset)
+    if ok and typeof(pos) == "Vector3" then return pos end
+    return hrp.Position
+end
+
+local function runFlick(char, hum, myHrp, target)
     local cam = workspace.CurrentCamera
-    local originalCFrame = cam.CFrame
+    if not cam then return end
 
-    local targetCFrame = CFrame.lookAt(cam.CFrame.Position, murdererHRP.Position)
-    local flickIn = ts:Create(cam, TweenInfo.new(0.048, Enum.EasingStyle.Linear), { CFrame = targetCFrame })
-    
-    flickIn:Play()
-    flickIn.Completed:Wait()
+    if not char:FindFirstChild("Gun") then
+        local gunTool = LocalPlayer.Backpack:FindFirstChild("Gun")
+        if not gunTool then notify("Flick Shoot", "No gun."); return end
+        hum:EquipTool(gunTool)
+        task.wait(0.12)
+    end
+    local targetHrp = getLiveHrp(target)
+    if not targetHrp then notify("Flick Shoot", "No HRP."); return end
 
-    local predictedPosition = getPredictedPosition(murderer, shootOffset)
+    local origCFrame = cam.CFrame
+    local origFocus = cam.Focus
+    local origType = cam.CameraType
+    local origSubject = cam.CameraSubject
+    local origFov = cam.FieldOfView
+    local origAutoRotate = hum.AutoRotate
+    local origPitch, origYaw, origRoll = origCFrame:ToOrientation()
+    local _, origHrpYaw = myHrp.CFrame:ToOrientation()
+    local focusOffset = origFocus.Position - myHrp.Position
+    local camDist = (origCFrame.Position - origFocus.Position).Magnitude
 
-    local args
-    if instakillshoot then
-        args = {
-            CFrame.new(murdererHRP.Position + Vector3.new(0, 1, 0)),
-            CFrame.new(murdererHRP.Position)
-        }
-    else
-        args = {
-            CFrame.new(LocalPlayer.Character.RightHand.Position),
-            CFrame.new(predictedPosition)
-        }
+    local holdTime = math.clamp(LocalPlayer:GetNetworkPing() * 1.5 + 0.04, FLICK.minHoldTime, FLICK.maxHoldTime)
+    local currentYaw = nil
+    local physicsConn = nil
+
+    local function poseCFrame(pitch, yaw)
+        local rot = CFrame.fromOrientation(pitch, yaw, origRoll)
+        local focusPos = myHrp.Position + focusOffset
+        return CFrame.new(focusPos - rot.LookVector * camDist) * rot, focusPos
     end
 
-    LocalPlayer.Character:WaitForChild("Gun"):WaitForChild("Shoot"):FireServer(unpack(args)) -- shi i lowk put ".Character" here lol
+    local restored = false
+    local function restore()
+        if restored then return end
+        restored = true
+        currentYaw = nil
+        if physicsConn then physicsConn:Disconnect(); physicsConn = nil end
+        pcall(function() RunService:UnbindFromRenderStep(FLICK_BIND) end)
+        pcall(function()
+            if myHrp.Parent then
+                myHrp.CFrame = CFrame.new(myHrp.Position) * CFrame.Angles(0, origHrpYaw, 0)
+                myHrp.AssemblyAngularVelocity = Vector3.zero
+            end
+            if hum.Parent then hum.AutoRotate = origAutoRotate end
+        end)
+        pcall(function()
+            if myHrp.Parent then
+                local cf, focusPos = poseCFrame(origPitch, origYaw)
+                cam.CFrame = cf
+                cam.Focus = CFrame.new(focusPos)
+            else
+                cam.CFrame = origCFrame
+                cam.Focus = origFocus
+            end
+            cam.FieldOfView = origFov
+            if origSubject then cam.CameraSubject = origSubject end
+            cam.CameraType = origType
+        end)
+    end
 
-    local flickOut = ts:Create(cam, TweenInfo.new(0.17, Enum.EasingStyle.Linear), { CFrame = originalCFrame })
-    flickOut:Play()
+    local function faceCharacter(yaw)
+        myHrp.CFrame = CFrame.new(myHrp.Position) * CFrame.Angles(0, yaw, 0)
+        myHrp.AssemblyAngularVelocity = Vector3.zero
+    end
+
+    local function apply(yaw)
+        local cf, focusPos = poseCFrame(origPitch, yaw)
+        cam.CFrame = cf
+        cam.Focus = CFrame.new(focusPos)
+        currentYaw = yaw
+        faceCharacter(yaw)
+    end
+
+    local function fire()
+        local gun = char:FindFirstChild("Gun")
+        local shoot = gun and gun:FindFirstChild("Shoot")
+        if not shoot then return end
+        local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm") or myHrp
+        local predicted = flickPredict(target, getLiveHrp(target) or targetHrp)
+        shoot:FireServer(CFrame.new(hand.Position), CFrame.new(predicted))
+    end
+
+    local finished, stepErr = false, nil
+    local startTime = os.clock()
+    local phase, phaseStart = 1, startTime
+    local finalYaw = origYaw - FLICK.spin
+    local returnDelta = flickWrap(origYaw - finalYaw)
+
+    local function step()
+        if not (char.Parent and myHrp.Parent and hum.Health > 0)
+            or os.clock() - startTime > FLICK.maxDuration then
+            finished = true
+            return
+        end
+        local now = os.clock()
+        local yaw
+
+        if phase == 1 then
+            local a = math.clamp((now - phaseStart) / FLICK.spinTime, 0, 1)
+            yaw = origYaw - FLICK.spin * easeOut(a)
+            if a >= 1 then phase, phaseStart = 2, now end
+        elseif phase == 2 then
+            yaw = finalYaw
+            if now - phaseStart >= holdTime then
+                apply(yaw)
+                pcall(fire)
+                phase, phaseStart = 3, now
+                return
+            end
+        else
+            local a = math.clamp((now - phaseStart) / FLICK.returnTime, 0, 1)
+            yaw = finalYaw + returnDelta * easeInOut(a)
+            if a >= 1 then finished = true end
+        end
+
+        apply(yaw)
+    end
+
+    local ok, err = pcall(function()
+        cam.CameraType = Enum.CameraType.Scriptable
+        hum.AutoRotate = false
+        physicsConn = RunService.PreSimulation:Connect(function()
+            if currentYaw and myHrp.Parent then
+                faceCharacter(currentYaw)
+            end
+        end)
+        RunService:BindToRenderStep(FLICK_BIND, Enum.RenderPriority.Camera.Value + 1, function()
+            local sok, serr = pcall(step)
+            if not sok then stepErr = serr; finished = true end
+        end)
+        while not finished do task.wait() end
+    end)
+
+    restore()
+    if not ok then warn("Flick error:", err) end
+    if stepErr then warn("Flick step error:", stepErr) end
+end
+
+local function doFlickShoot()
+    if flickCooldown then return end
+    if findSheriff() ~= LocalPlayer then
+        notify("Flick Shoot", "You're not sheriff/hero."); return
+    end
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local myHrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not (hum and myHrp) or hum.Health <= 0 then return end
+
+    local target = resolveFlickTarget(myHrp.Position)
+    if not target then
+        notify("Flick Shoot", "No target."); return
+    end
+
+    flickCooldown = true
+    task.spawn(function()
+        local ok, err = pcall(runFlick, char, hum, myHrp, target)
+        if not ok then warn("Flick error:", err) end
+        task.wait(FLICK.cooldown)
+        flickCooldown = false
+    end)
 end
 
 mm2Tab:CreateSection({ name = "ESPs" })
@@ -1432,13 +1595,13 @@ mm2Tab:CreateToggle({
 })
 mm2Tab:CreateButton({
     name = "Flick Shoot Murderer",
-    callback = flickShootMurderer,
+    callback = doFlickShoot,
 })
 mm2Tab:CreateToggle({
     name = "Floating Flick Shoot", flag = "MM2_FloatingFlick", forgetState = true,
     callback = function(state)
         if state then
-            makeFloatingButton("FlickShoot", "Flick Shoot", flickShootMurderer)
+            makeFloatingButton("FlickShoot", "Flick Shoot", doFlickShoot)
         else
             removeFloatingButton("FlickShoot")
         end
