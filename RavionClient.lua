@@ -1308,7 +1308,9 @@ local function doKnifeThrow(silent)
 end
 
 -- lmao i finally got a working one, ty sanu
+local TweenService = game:GetService("TweenService")
 local function flickShootMurderer()
+	local ts = TweenService
     if findSheriff() ~= LocalPlayer then
         notify("You're not sheriff/hero.")
         return
