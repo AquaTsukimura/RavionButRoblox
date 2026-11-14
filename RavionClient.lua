@@ -8,30 +8,32 @@ if not game:IsLoaded() then
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Ravion Client",
         Text = "Waiting for the game to finish loading!",
-        Duration = 5
+        Duration = 5,
     })
     game.Loaded:Wait()
 end
 
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/gen2"))()
+--local Rayfield = loadstring(game:HttpGet("https://sirius.menu/gen2"))()
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/AquaTsukimura/Rayfield-Gen2Fork/refs/heads/main/rayfield.lua"))()
 
-local Players           = game:GetService("Players")
-local RunService        = game:GetService("RunService")
-local UserInputService  = game:GetService("UserInputService")
-local TweenService      = game:GetService("TweenService")
-local HttpService       = game:GetService("HttpService")
-local Lighting          = game:GetService("Lighting")
-local LocalPlayer       = Players.LocalPlayer
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local LocalPlayer = Players.LocalPlayer
 
 local window = Rayfield:CreateWindow({
     name = "Ravion Client",
     subtitle = "v13.1",
     sidebarLayout = true,
+    isSmallOpen = true,
     theme = "cobalt",
     configuration = {
-        autoSave   = false,
-        autoLoad   = false,
-        fileName   = "RavionClient",
+        autoSave = false,
+        autoLoad = false,
+        fileName = "RavionClient",
     },
 })
 
@@ -39,23 +41,29 @@ local initializing = true
 local initComplete = false
 
 local function notify(title, content, duration)
-    if initializing then return end
+    if initializing then
+        return
+    end
     window:Notify({ title = title, content = content, duration = duration or 3 })
 end
 
 local function getHiddenParent()
     if gethui then
         local ok, hui = pcall(gethui)
-        if ok and hui then return hui end
+        if ok and hui then
+            return hui
+        end
     end
     if get_hidden_gui then
         local ok, hui = pcall(get_hidden_gui)
-        if ok and hui then return hui end
+        if ok and hui then
+            return hui
+        end
     end
     return game:GetService("CoreGui")
 end
 
-local dialogEvent  = Instance.new("BindableEvent")
+local dialogEvent = Instance.new("BindableEvent")
 local dialogResult = nil
 
 local function dialog(title, description, buttons)
@@ -71,21 +79,25 @@ local function dialog(title, description, buttons)
         })
     end
     window:Popup({
-        title       = title,
-        content     = description,
-        options     = opts,
+        title = title,
+        content = description,
+        options = opts,
         dismissable = false,
     })
 end
 
 local function waitfordialog()
-    if dialogResult then return dialogResult end
+    if dialogResult then
+        return dialogResult
+    end
     return dialogEvent.Event:Wait()
 end
 
 local function splitString(str, delim)
     local broken = {}
-    if delim == nil then delim = "," end
+    if delim == nil then
+        delim = ","
+    end
     for w in string.gmatch(str, "[^" .. delim .. "]+") do
         table.insert(broken, w)
     end
@@ -102,15 +114,27 @@ end
 
 local function onlyIncludeInTable(tab, matches)
     local matchTable, resultTable = {}, {}
-    for _, v in pairs(matches) do matchTable[v.Name] = true end
-    for _, v in pairs(tab) do if matchTable[v.Name] then table.insert(resultTable, v) end end
+    for _, v in pairs(matches) do
+        matchTable[v.Name] = true
+    end
+    for _, v in pairs(tab) do
+        if matchTable[v.Name] then
+            table.insert(resultTable, v)
+        end
+    end
     return resultTable
 end
 
 local function removeTableMatches(tab, matches)
     local matchTable, resultTable = {}, {}
-    for _, v in pairs(matches) do matchTable[v.Name] = true end
-    for _, v in pairs(tab) do if not matchTable[v.Name] then table.insert(resultTable, v) end end
+    for _, v in pairs(matches) do
+        matchTable[v.Name] = true
+    end
+    for _, v in pairs(tab) do
+        if not matchTable[v.Name] then
+            table.insert(resultTable, v)
+        end
+    end
     return resultTable
 end
 
@@ -123,8 +147,10 @@ local function getPlayersByName(Name)
                 table.insert(Found, v)
             end
         else
-            if string.sub(string.lower(v.Name), 1, Len) == Name
-            or string.sub(string.lower(v.DisplayName), 1, Len) == Name then
+            if
+                string.sub(string.lower(v.Name), 1, Len) == Name
+                or string.sub(string.lower(v.DisplayName), 1, Len) == Name
+            then
                 table.insert(Found, v)
             end
         end
@@ -133,8 +159,10 @@ local function getPlayersByName(Name)
 end
 
 local function getPlayer(list, speaker)
-    if list == nil then return speaker.Name end
-    local nameList  = splitString(list, ",")
+    if list == nil then
+        return speaker.Name
+    end
+    local nameList = splitString(list, ",")
     local foundList = {}
     for _, name in pairs(nameList) do
         if string.sub(name, 1, 1) ~= "+" and string.sub(name, 1, 1) ~= "-" then
@@ -149,19 +177,601 @@ local function getPlayer(list, speaker)
                 initialPlayers = removeTableMatches(initialPlayers, getPlayersByName(v.Name))
             end
         end
-        for _, v in pairs(initialPlayers) do table.insert(foundList, v) end
+        for _, v in pairs(initialPlayers) do
+            table.insert(foundList, v)
+        end
     end
     local foundNames = {}
-    for _, v in pairs(foundList) do table.insert(foundNames, v.Name) end
+    for _, v in pairs(foundList) do
+        table.insert(foundNames, v.Name)
+    end
     return foundNames[1]
 end
 
 local espind = (function()
-    local e={} e.__index=e local a=game:GetService("RunService") local _=game:GetService("Players") local b=game:GetService("HttpService") local l=game:GetService("TweenService") e.Groups={} e.TargetIndex={} e.Defaults={AccentColor=Color3.new(1,1,0),HighlightFillTransparency=0.7,HighlightOutlineTransparency=0,HighlightDepthMode=Enum.HighlightDepthMode.AlwaysOnTop,ArrowShow=false,ArrowEdgePadding=50,ArrowMinDistance=0,ArrowSize=UDim2.new(0,30,0,30),ArrowImage="rbxassetid://97136202386756",ArrowShowDistanceText=true,ArrowDistanceFont=Enum.Font.Montserrat,ArrowDistanceTextSize=18,ShowLabel=false,LabelText="Target",LabelMaxDistance=99999,LabelOffset=Vector3.new(0,2,0),Parent=game:GetService("CoreGui")} function e.new(b)local c=setmetatable({},e) c.Settings={} for a,_ in pairs(e.Defaults)do c.Settings[a]=(b and b[a]~=nil)and b[a]or _ end local _=c.Settings.Parent or _.LocalPlayer:WaitForChild("PlayerGui") c.ScreenGui=Instance.new("ScreenGui") c.ScreenGui.Name="ESPIndicators" c.ScreenGui.IgnoreGuiInset=true c.ScreenGui.ResetOnSpawn=false c.ScreenGui.Parent=_ c.ArrowTemplate=Instance.new("ImageLabel") c.ArrowTemplate.Name="ArrowTemplate" c.ArrowTemplate.Size=c.Settings.ArrowSize c.ArrowTemplate.AnchorPoint=Vector2.new(0.5,0.5) c.ArrowTemplate.BackgroundTransparency=1 c.ArrowTemplate.Image=c.Settings.ArrowImage c.ArrowTemplate.ImageColor3=c.Settings.AccentColor c.ArrowTemplate.Visible=false c.ArrowTemplate.Parent=c.ScreenGui c.Scaler=Instance.new("UIScale") c.Scaler.Name="Scaler" c.Scaler.Scale=0 c.Scaler.Parent=c.ArrowTemplate c.Indicators={} c._updateConn=a.RenderStepped:Connect(function()c:_update()end) c._cleanupConn=a.Heartbeat:Connect(function()c:_cleanupOrphanedArrows() c:_cleanupOrphanedHighlights() c:_cleanupOrphanedLabels()end) return c end function e:AddGroup(_)local a=e.Groups[_] if not a then a={enabled=true,properties={},targets={}} e.Groups[_]=a end return a end function e:GetGroup(_)return e.Groups[_]end function e:RemoveGroup(b)local _=e.Groups[b] if not _ then return false end for _,_ in ipairs(_.targets)do local c=e.TargetIndex[_] if c then for _,a in ipairs(c)do if a==b then table.remove(c,_) break end end if#c==0 then e.TargetIndex[_]=nil end end if not e.TargetIndex[_]then self:Remove(_)end end e.Groups[b]=nil return true end function e:ClearAllGroups()for a,_ in pairs(e.Groups)do self:RemoveGroup(a)end end function e:ToggleGroup(_,a)local b=e.Groups[_] if not b then return end b.enabled=(a~=nil)and a or not b.enabled for _,_ in ipairs(b.targets)do local _=self.Indicators[_] if _ then if _.Highlight then _.Highlight.Enabled=b.enabled end if _.Arrow then _.Arrow.Visible=b.enabled and self.Settings.ArrowShow end if _.Label then _.Label.Enabled=b.enabled end end end return b.enabled end function e:SetGroupProperty(_,a,b)local _=self:AddGroup(_) _.properties[a]=b for _,_ in ipairs(_.targets)do local _=self.Indicators[_] if _ then if a=="AccentColor"then if _.Highlight then _.Highlight.FillColor=b _.Highlight.OutlineColor=b end if _.Arrow then _.Arrow.ImageColor3=b end if _.DistanceLabel then _.DistanceLabel.TextColor3=b end if _.Label and _.Label:FindFirstChild("TextLabel")then _.Label.TextLabel.TextColor3=b end end end end end function e:Add(a,g)assert(a,"ESPIndicator:Add requires a non-nil target") g=g or{} local d=Instance.new("Highlight") d.Name="Highlight_"..b:GenerateGUID(false) d.Adornee=a d.FillTransparency=g.HighlightFillTransparency or self.Settings.HighlightFillTransparency d.FillColor=g.AccentColor or self.Settings.AccentColor d.OutlineColor=g.AccentColor or self.Settings.AccentColor d.OutlineTransparency=g.HighlightOutlineTransparency or self.Settings.HighlightOutlineTransparency d.DepthMode=g.HighlightDepthMode or self.Settings.HighlightDepthMode d.Parent=self.ScreenGui local c,_,e if(g.ArrowShow or self.Settings.ArrowShow)then c=self.ArrowTemplate:Clone() c.Name="Arrow_"..b:GenerateGUID(false) c.ImageColor3=g.AccentColor or self.Settings.AccentColor c.Visible=true c.Parent=self.ScreenGui _=c:FindFirstChild("Scaler") if(g.ArrowShowDistanceText or self.Settings.ArrowShowDistanceText)then e=Instance.new("TextLabel") e.Name="DistanceLabel" e.AnchorPoint=Vector2.new(0.5,0) e.BackgroundTransparency=1 e.Font=g.ArrowDistanceFont or self.Settings.ArrowDistanceFont e.TextSize=g.ArrowDistanceTextSize or self.Settings.ArrowDistanceTextSize e.TextColor3=g.AccentColor or self.Settings.AccentColor e.Parent=c end end local f if(g.ShowLabel or self.Settings.ShowLabel)then f=Instance.new("BillboardGui") f.Name="Label_"..b:GenerateGUID(false) f.AlwaysOnTop=true f.MaxDistance=self.Settings.LabelMaxDistance f.Size=UDim2.new(0,70,0,70) f.StudsOffset=self.Settings.LabelOffset f.Adornee=a f.Parent=self.ScreenGui local _=Instance.new("TextLabel") _.Name="TextLabel" _.Size=UDim2.new(1,0,1,0) _.AnchorPoint=Vector2.new(0.5,0.5) _.Position=UDim2.new(0.5,0,0.5,0) _.BackgroundTransparency=1 _.Font=Enum.Font.SourceSansBold _.TextScaled=true _.TextWrapped=true _.TextSize=14 _.TextColor3=g.AccentColor or self.Settings.AccentColor _.Text=g.LabelText or self.Settings.LabelText _.Parent=f Instance.new("UIStroke",_)end self.Indicators[a]={Highlight=d,Arrow=c,Scaler=_,DistanceLabel=e,Label=f,Options=g} local _=g.GroupName or self.Settings.GroupName if _ then self:AddToGroup(a,_)end end function e:Remove(c)local _=self.Indicators[c] if not _ then return end if _.Highlight then _.Highlight.Adornee=nil _.Highlight:Destroy()end if _.Arrow then _.Arrow:Destroy()end if _.Label then _.Label:Destroy()end local _=e.TargetIndex[c] if _ then for _,_ in ipairs(_)do local b=e.Groups[_] if b then for a,_ in ipairs(b.targets)do if _==c then table.remove(b.targets,a) break end end end end e.TargetIndex[c]=nil end self.Indicators[c]=nil end function e:AddToGroup(c,b)local _=self:AddGroup(b) if not table.find(_.targets,c)then table.insert(_.targets,c)end local a=e.TargetIndex[c] if not a then a={} e.TargetIndex[c]=a end if not table.find(a,b)then table.insert(a,b)end for a,_ in pairs(_.properties)do self:SetGroupProperty(b,a,_)end if not _.enabled then local _=self.Indicators[c] if _ and _.Highlight then _.Highlight.Enabled=false end end return true end function e:RemoveFromGroup(d,b)local c=e.Groups[b] if not c then return false end if table.find(c.targets,d)then for _,a in ipairs(c.targets)do if a==d then table.remove(c.targets,_) break end end else return false end local c=e.TargetIndex[d] if c then for a,_ in ipairs(c)do if _==b then table.remove(c,a) break end end if#c==0 then e.TargetIndex[d]=nil end end return true end function e:GetGroupTargets(_)local _=e.Groups[_] return _ and _.targets or{}end function e:GetTargetGroups(_)return e.TargetIndex[_]or{}end function e:_cleanupOrphanedHighlights()for _,_ in ipairs(self.ScreenGui:GetChildren())do if _:IsA("Highlight")and not table.find(self:_allHighlights(),_)then _.Adornee=nil _:Destroy()end end end function e:_allHighlights()local a={} for _,_ in pairs(self.Indicators)do if _.Highlight then table.insert(a,_.Highlight)end end return a end function e:_cleanupOrphanedArrows()for _,_ in ipairs(self.ScreenGui:GetChildren())do if _:IsA("ImageLabel")and _.Name:match("^Arrow_")then if not table.find(self:_allArrows(),_)then _:Destroy()end end end end function e:_allArrows()local a={} for _,_ in pairs(self.Indicators)do if _.Arrow then table.insert(a,_.Arrow)end end return a end function e:_cleanupOrphanedLabels()for _,_ in ipairs(self.ScreenGui:GetChildren())do if _:IsA("BillboardGui")and _.Name:match("^Label_")then if not table.find(self:_allLabels(),_)then _.Adornee=nil _:Destroy()end end end end function e:_allLabels()local a={} for _,_ in pairs(self.Indicators)do if _.Label then table.insert(a,_.Label)end end return a end function e:_update()local a=workspace.CurrentCamera if not a then return end local _=a.ViewportSize local f,i=_.X,_.Y for _,p in pairs(self.Indicators)do local j=p.Options local h=p.Arrow local k=p.Scaler if((not h)or(not k))and self.Settings.ArrowShow then self:Remove(_) continue end if not h then continue end local n if _:IsA("Model")then n=(_.PrimaryPart and _.PrimaryPart.Position)or _:GetModelCFrame().p elseif _:IsA("BasePart")then n=_.Position else continue end local m,e=a:WorldToViewportPoint(n) local c=(a.CFrame.p-n).Magnitude local _=j.ArrowMinDistance or self.Settings.ArrowMinDistance local o=j.ArrowEdgePadding or self.Settings.ArrowEdgePadding if e and c>_ then l:Create(k,TweenInfo.new(0.1,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Scale=0}):Play()else l:Create(k,TweenInfo.new(0.1,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Scale=1}):Play() local d,g=f-o*2,i-o*2 local b=a.CFrame local _=math.sqrt((d/2)^2+(g/2)^2) local a=n-b.Position local a=b:VectorToObjectSpace(a) local n=Vector2.new(a.X,a.Y).Unit local a=math.clamp(m.X,o,f-o) local b=math.clamp(m.Y,o,i-o) if a==m.X and b==m.Y and e then l:Create(k,TweenInfo.new(0.1,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Scale=0}):Play()else local _=n*_ local b if math.abs(_.Y)>g/2 then b=n*math.abs((g/2)/n.Y)else b=n*math.abs((d/2)/n.X)end local a=f/2+b.X local _=i/2-b.Y local b=math.atan2(n.X,n.Y) l:Create(h,TweenInfo.new(0.1,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Position=UDim2.fromOffset(a,_),Rotation=math.deg(b)}):Play()end if p.DistanceLabel then p.DistanceLabel.Text=string.format("%dm",math.round(c)) local _=(j.ArrowSize and j.ArrowSize.Y.Offset or self.Settings.ArrowSize.Y.Offset)+16 p.DistanceLabel.Position=UDim2.new(0.5,0,0,_)end end end end function e:Destroy()if self._updateConn then self._updateConn:Disconnect()end if self._cleanupConn then self._cleanupConn:Disconnect()end self:ClearAllGroups() for _,_ in pairs(self.Indicators)do if _.Highlight then _.Highlight:Destroy()end if _.Arrow then _.Arrow:Destroy()end if _.Label then _.Label:Destroy()end end self.ScreenGui:Destroy() self.Indicators={} e.Groups={} e.TargetIndex={}end return e
+    local e = {}
+    e.__index = e
+    local a = game:GetService("RunService")
+    local _ = game:GetService("Players")
+    local b = game:GetService("HttpService")
+    local l = game:GetService("TweenService")
+    e.Groups = {}
+    e.TargetIndex = {}
+    e.Defaults = {
+        AccentColor = Color3.new(1, 1, 0),
+        HighlightFillTransparency = 0.7,
+        HighlightOutlineTransparency = 0,
+        HighlightDepthMode = Enum.HighlightDepthMode.AlwaysOnTop,
+        ArrowShow = false,
+        ArrowEdgePadding = 50,
+        ArrowMinDistance = 0,
+        ArrowSize = UDim2.new(0, 30, 0, 30),
+        ArrowImage = "rbxassetid://97136202386756",
+        ArrowShowDistanceText = true,
+        ArrowDistanceFont = Enum.Font.Montserrat,
+        ArrowDistanceTextSize = 18,
+        ShowLabel = false,
+        LabelText = "Target",
+        LabelMaxDistance = 99999,
+        LabelOffset = Vector3.new(0, 2, 0),
+        Parent = game:GetService("CoreGui"),
+    }
+    function e.new(b)
+        local c = setmetatable({}, e)
+        c.Settings = {}
+        for a, _ in pairs(e.Defaults) do
+            c.Settings[a] = (b and b[a] ~= nil) and b[a] or _
+        end
+        local _ = c.Settings.Parent or _.LocalPlayer:WaitForChild("PlayerGui")
+        c.ScreenGui = Instance.new("ScreenGui")
+        c.ScreenGui.Name = "ESPIndicators"
+        c.ScreenGui.IgnoreGuiInset = true
+        c.ScreenGui.ResetOnSpawn = false
+        c.ScreenGui.Parent = _
+        c.ArrowTemplate = Instance.new("ImageLabel")
+        c.ArrowTemplate.Name = "ArrowTemplate"
+        c.ArrowTemplate.Size = c.Settings.ArrowSize
+        c.ArrowTemplate.AnchorPoint = Vector2.new(0.5, 0.5)
+        c.ArrowTemplate.BackgroundTransparency = 1
+        c.ArrowTemplate.Image = c.Settings.ArrowImage
+        c.ArrowTemplate.ImageColor3 = c.Settings.AccentColor
+        c.ArrowTemplate.Visible = false
+        c.ArrowTemplate.Parent = c.ScreenGui
+        c.Scaler = Instance.new("UIScale")
+        c.Scaler.Name = "Scaler"
+        c.Scaler.Scale = 0
+        c.Scaler.Parent = c.ArrowTemplate
+        c.Indicators = {}
+        c._updateConn = a.RenderStepped:Connect(function()
+            c:_update()
+        end)
+        c._cleanupConn = a.Heartbeat:Connect(function()
+            c:_cleanupOrphanedArrows()
+            c:_cleanupOrphanedHighlights()
+            c:_cleanupOrphanedLabels()
+        end)
+        return c
+    end
+    function e:AddGroup(_)
+        local a = e.Groups[_]
+        if not a then
+            a = { enabled = true, properties = {}, targets = {} }
+            e.Groups[_] = a
+        end
+        return a
+    end
+    function e:GetGroup(_)
+        return e.Groups[_]
+    end
+    function e:RemoveGroup(b)
+        local _ = e.Groups[b]
+        if not _ then
+            return false
+        end
+        for _, _ in ipairs(_.targets) do
+            local c = e.TargetIndex[_]
+            if c then
+                for _, a in ipairs(c) do
+                    if a == b then
+                        table.remove(c, _)
+                        break
+                    end
+                end
+                if #c == 0 then
+                    e.TargetIndex[_] = nil
+                end
+            end
+            if not e.TargetIndex[_] then
+                self:Remove(_)
+            end
+        end
+        e.Groups[b] = nil
+        return true
+    end
+    function e:ClearAllGroups()
+        for a, _ in pairs(e.Groups) do
+            self:RemoveGroup(a)
+        end
+    end
+    function e:ToggleGroup(_, a)
+        local b = e.Groups[_]
+        if not b then
+            return
+        end
+        b.enabled = (a ~= nil) and a or not b.enabled
+        for _, _ in ipairs(b.targets) do
+            local _ = self.Indicators[_]
+            if _ then
+                if _.Highlight then
+                    _.Highlight.Enabled = b.enabled
+                end
+                if _.Arrow then
+                    _.Arrow.Visible = b.enabled and self.Settings.ArrowShow
+                end
+                if _.Label then
+                    _.Label.Enabled = b.enabled
+                end
+            end
+        end
+        return b.enabled
+    end
+    function e:SetGroupProperty(_, a, b)
+        local _ = self:AddGroup(_)
+        _.properties[a] = b
+        for _, _ in ipairs(_.targets) do
+            local _ = self.Indicators[_]
+            if _ then
+                if a == "AccentColor" then
+                    if _.Highlight then
+                        _.Highlight.FillColor = b
+                        _.Highlight.OutlineColor = b
+                    end
+                    if _.Arrow then
+                        _.Arrow.ImageColor3 = b
+                    end
+                    if _.DistanceLabel then
+                        _.DistanceLabel.TextColor3 = b
+                    end
+                    if _.Label and _.Label:FindFirstChild("TextLabel") then
+                        _.Label.TextLabel.TextColor3 = b
+                    end
+                end
+            end
+        end
+    end
+    function e:Add(a, g)
+        assert(a, "ESPIndicator:Add requires a non-nil target")
+        g = g or {}
+        local d = Instance.new("Highlight")
+        d.Name = "Highlight_" .. b:GenerateGUID(false)
+        d.Adornee = a
+        d.FillTransparency = g.HighlightFillTransparency or self.Settings.HighlightFillTransparency
+        d.FillColor = g.AccentColor or self.Settings.AccentColor
+        d.OutlineColor = g.AccentColor or self.Settings.AccentColor
+        d.OutlineTransparency = g.HighlightOutlineTransparency or self.Settings.HighlightOutlineTransparency
+        d.DepthMode = g.HighlightDepthMode or self.Settings.HighlightDepthMode
+        d.Parent = self.ScreenGui
+        local c, _, e
+        if g.ArrowShow or self.Settings.ArrowShow then
+            c = self.ArrowTemplate:Clone()
+            c.Name = "Arrow_" .. b:GenerateGUID(false)
+            c.ImageColor3 = g.AccentColor or self.Settings.AccentColor
+            c.Visible = true
+            c.Parent = self.ScreenGui
+            _ = c:FindFirstChild("Scaler")
+            if g.ArrowShowDistanceText or self.Settings.ArrowShowDistanceText then
+                e = Instance.new("TextLabel")
+                e.Name = "DistanceLabel"
+                e.AnchorPoint = Vector2.new(0.5, 0)
+                e.BackgroundTransparency = 1
+                e.Font = g.ArrowDistanceFont or self.Settings.ArrowDistanceFont
+                e.TextSize = g.ArrowDistanceTextSize or self.Settings.ArrowDistanceTextSize
+                e.TextColor3 = g.AccentColor or self.Settings.AccentColor
+                e.Parent = c
+            end
+        end
+        local f
+        if g.ShowLabel or self.Settings.ShowLabel then
+            f = Instance.new("BillboardGui")
+            f.Name = "Label_" .. b:GenerateGUID(false)
+            f.AlwaysOnTop = true
+            f.MaxDistance = self.Settings.LabelMaxDistance
+            f.Size = UDim2.new(0, 70, 0, 70)
+            f.StudsOffset = self.Settings.LabelOffset
+            f.Adornee = a
+            f.Parent = self.ScreenGui
+            local _ = Instance.new("TextLabel")
+            _.Name = "TextLabel"
+            _.Size = UDim2.new(1, 0, 1, 0)
+            _.AnchorPoint = Vector2.new(0.5, 0.5)
+            _.Position = UDim2.new(0.5, 0, 0.5, 0)
+            _.BackgroundTransparency = 1
+            _.Font = Enum.Font.SourceSansBold
+            _.TextScaled = true
+            _.TextWrapped = true
+            _.TextSize = 14
+            _.TextColor3 = g.AccentColor or self.Settings.AccentColor
+            _.Text = g.LabelText or self.Settings.LabelText
+            _.Parent = f
+            Instance.new("UIStroke", _)
+        end
+        self.Indicators[a] = { Highlight = d, Arrow = c, Scaler = _, DistanceLabel = e, Label = f, Options = g }
+        local _ = g.GroupName or self.Settings.GroupName
+        if _ then
+            self:AddToGroup(a, _)
+        end
+    end
+    function e:Remove(c)
+        local _ = self.Indicators[c]
+        if not _ then
+            return
+        end
+        if _.Highlight then
+            _.Highlight.Adornee = nil
+            _.Highlight:Destroy()
+        end
+        if _.Arrow then
+            _.Arrow:Destroy()
+        end
+        if _.Label then
+            _.Label:Destroy()
+        end
+        local _ = e.TargetIndex[c]
+        if _ then
+            for _, _ in ipairs(_) do
+                local b = e.Groups[_]
+                if b then
+                    for a, _ in ipairs(b.targets) do
+                        if _ == c then
+                            table.remove(b.targets, a)
+                            break
+                        end
+                    end
+                end
+            end
+            e.TargetIndex[c] = nil
+        end
+        self.Indicators[c] = nil
+    end
+    function e:AddToGroup(c, b)
+        local _ = self:AddGroup(b)
+        if not table.find(_.targets, c) then
+            table.insert(_.targets, c)
+        end
+        local a = e.TargetIndex[c]
+        if not a then
+            a = {}
+            e.TargetIndex[c] = a
+        end
+        if not table.find(a, b) then
+            table.insert(a, b)
+        end
+        for a, _ in pairs(_.properties) do
+            self:SetGroupProperty(b, a, _)
+        end
+        if not _.enabled then
+            local _ = self.Indicators[c]
+            if _ and _.Highlight then
+                _.Highlight.Enabled = false
+            end
+        end
+        return true
+    end
+    function e:RemoveFromGroup(d, b)
+        local c = e.Groups[b]
+        if not c then
+            return false
+        end
+        if table.find(c.targets, d) then
+            for _, a in ipairs(c.targets) do
+                if a == d then
+                    table.remove(c.targets, _)
+                    break
+                end
+            end
+        else
+            return false
+        end
+        local c = e.TargetIndex[d]
+        if c then
+            for a, _ in ipairs(c) do
+                if _ == b then
+                    table.remove(c, a)
+                    break
+                end
+            end
+            if #c == 0 then
+                e.TargetIndex[d] = nil
+            end
+        end
+        return true
+    end
+    function e:GetGroupTargets(_)
+        local _ = e.Groups[_]
+        return _ and _.targets or {}
+    end
+    function e:GetTargetGroups(_)
+        return e.TargetIndex[_] or {}
+    end
+    function e:_cleanupOrphanedHighlights()
+        for _, _ in ipairs(self.ScreenGui:GetChildren()) do
+            if _:IsA("Highlight") and not table.find(self:_allHighlights(), _) then
+                _.Adornee = nil
+                _:Destroy()
+            end
+        end
+    end
+    function e:_allHighlights()
+        local a = {}
+        for _, _ in pairs(self.Indicators) do
+            if _.Highlight then
+                table.insert(a, _.Highlight)
+            end
+        end
+        return a
+    end
+    function e:_cleanupOrphanedArrows()
+        for _, _ in ipairs(self.ScreenGui:GetChildren()) do
+            if _:IsA("ImageLabel") and _.Name:match("^Arrow_") then
+                if not table.find(self:_allArrows(), _) then
+                    _:Destroy()
+                end
+            end
+        end
+    end
+    function e:_allArrows()
+        local a = {}
+        for _, _ in pairs(self.Indicators) do
+            if _.Arrow then
+                table.insert(a, _.Arrow)
+            end
+        end
+        return a
+    end
+    function e:_cleanupOrphanedLabels()
+        for _, _ in ipairs(self.ScreenGui:GetChildren()) do
+            if _:IsA("BillboardGui") and _.Name:match("^Label_") then
+                if not table.find(self:_allLabels(), _) then
+                    _.Adornee = nil
+                    _:Destroy()
+                end
+            end
+        end
+    end
+    function e:_allLabels()
+        local a = {}
+        for _, _ in pairs(self.Indicators) do
+            if _.Label then
+                table.insert(a, _.Label)
+            end
+        end
+        return a
+    end
+    function e:_update()
+        local a = workspace.CurrentCamera
+        if not a then
+            return
+        end
+        local _ = a.ViewportSize
+        local f, i = _.X, _.Y
+        for _, p in pairs(self.Indicators) do
+            local j = p.Options
+            local h = p.Arrow
+            local k = p.Scaler
+            if ((not h) or not k) and self.Settings.ArrowShow then
+                self:Remove(_)
+                continue
+            end
+            if not h then
+                continue
+            end
+            local n
+            if _:IsA("Model") then
+                n = (_.PrimaryPart and _.PrimaryPart.Position) or _:GetModelCFrame().p
+            elseif _:IsA("BasePart") then
+                n = _.Position
+            else
+                continue
+            end
+            local m, e = a:WorldToViewportPoint(n)
+            local c = (a.CFrame.p - n).Magnitude
+            local _ = j.ArrowMinDistance or self.Settings.ArrowMinDistance
+            local o = j.ArrowEdgePadding or self.Settings.ArrowEdgePadding
+            if e and c > _ then
+                l:Create(k, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 0 }):Play()
+            else
+                l:Create(k, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+                local d, g = f - o * 2, i - o * 2
+                local b = a.CFrame
+                local _ = math.sqrt((d / 2) ^ 2 + (g / 2) ^ 2)
+                local a = n - b.Position
+                local a = b:VectorToObjectSpace(a)
+                local n = Vector2.new(a.X, a.Y).Unit
+                local a = math.clamp(m.X, o, f - o)
+                local b = math.clamp(m.Y, o, i - o)
+                if a == m.X and b == m.Y and e then
+                    l:Create(k, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 0 })
+                        :Play()
+                else
+                    local _ = n * _
+                    local b
+                    if math.abs(_.Y) > g / 2 then
+                        b = n * math.abs((g / 2) / n.Y)
+                    else
+                        b = n * math.abs((d / 2) / n.X)
+                    end
+                    local a = f / 2 + b.X
+                    local _ = i / 2 - b.Y
+                    local b = math.atan2(n.X, n.Y)
+                    l:Create(
+                        h,
+                        TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        { Position = UDim2.fromOffset(a, _), Rotation = math.deg(b) }
+                    ):Play()
+                end
+                if p.DistanceLabel then
+                    p.DistanceLabel.Text = string.format("%dm", math.round(c))
+                    local _ = (j.ArrowSize and j.ArrowSize.Y.Offset or self.Settings.ArrowSize.Y.Offset) + 16
+                    p.DistanceLabel.Position = UDim2.new(0.5, 0, 0, _)
+                end
+            end
+        end
+    end
+    function e:Destroy()
+        if self._updateConn then
+            self._updateConn:Disconnect()
+        end
+        if self._cleanupConn then
+            self._cleanupConn:Disconnect()
+        end
+        self:ClearAllGroups()
+        for _, _ in pairs(self.Indicators) do
+            if _.Highlight then
+                _.Highlight:Destroy()
+            end
+            if _.Arrow then
+                _.Arrow:Destroy()
+            end
+            if _.Label then
+                _.Label:Destroy()
+            end
+        end
+        self.ScreenGui:Destroy()
+        self.Indicators = {}
+        e.Groups = {}
+        e.TargetIndex = {}
+    end
+    return e
 end)()
 
 local flyutility = (function()
-    local l={} local _=game:GetService("Players") local b=game:GetService("RunService") local d=_.LocalPlayer local h=false local e=50 local c=2 local i=0 local g=Vector3.new() local j=nil local k=nil local f=nil local function _()if f then f:Disconnect() f=nil end if j then j:Destroy() j=nil end if k then k:Destroy() k=nil end local _=d.Character if _ then local _=_:FindFirstChildOfClass("Humanoid") if _ then _.PlatformStand=false end end h=false i=0 end local function a(_)local a=d.Character if not h or not a then l:Stop() return end local _=a:FindFirstChildOfClass("Humanoid") local d=a:FindFirstChild("HumanoidRootPart") local a=workspace.CurrentCamera if not _ or _.Health<=0 or not d or not a then l:Stop() return end local _=_.MoveDirection if _.Magnitude>0.01 then i=math.min(e,i+c) g=_.Unit else i=math.max(0,i-c)end local _=Vector3.new(g.X,0,g.Z) local c=Vector3.zero if _.Magnitude>0 then c=_.Unit*i end local f=a.CFrame.LookVector.Unit local b=g:Dot(f) local _=b<0 and-1 or 1 local a=Vector3.new(f.X,0,f.Z) if a.Magnitude>0 then a=a.Unit end local a=math.abs(g:Dot(a)) local _=f.Y*_*a local _=_*i k.Velocity=Vector3.new(c.X,_,c.Z) local _=(i/e)*30 local _=-math.rad(b*_) j.CFrame=CFrame.new(d.Position,d.Position+f)*CFrame.Angles(_,0,0)end function l:Start()if h then return end local c=d.Character if not c then return end local _=c:FindFirstChildOfClass("Humanoid") local c=c:FindFirstChild("HumanoidRootPart") if not _ or not c then return end h=true j=Instance.new("BodyGyro") j.P=100000 j.MaxTorque=Vector3.new(math.huge,math.huge,math.huge) j.CFrame=c.CFrame j.Parent=c k=Instance.new("BodyVelocity") k.P=10000 k.MaxForce=Vector3.new(math.huge,math.huge,math.huge) k.Velocity=Vector3.new(0,0,0) k.Parent=c _.PlatformStand=true f=b.Heartbeat:Connect(a)end function l:Stop()if not h then return end _()end function l:SetMaxSpeed(_)if type(_)=="number"and _>=0 then e=_ else warn("FlyUtility:SetMaxSpeed requires a non-negative number.")end end function l:GetMaxSpeed()return e end function l:IsFlying()return h end d.CharacterRemoving:Connect(function(_)if h then l:Stop()end end) return l
+    local l = {}
+    local _ = game:GetService("Players")
+    local b = game:GetService("RunService")
+    local d = _.LocalPlayer
+    local h = false
+    local e = 50
+    local c = 2
+    local i = 0
+    local g = Vector3.new()
+    local j = nil
+    local k = nil
+    local f = nil
+    local function _()
+        if f then
+            f:Disconnect()
+            f = nil
+        end
+        if j then
+            j:Destroy()
+            j = nil
+        end
+        if k then
+            k:Destroy()
+            k = nil
+        end
+        local _ = d.Character
+        if _ then
+            local _ = _:FindFirstChildOfClass("Humanoid")
+            if _ then
+                _.PlatformStand = false
+            end
+        end
+        h = false
+        i = 0
+    end
+    local function a(_)
+        local a = d.Character
+        if not h or not a then
+            l:Stop()
+            return
+        end
+        local _ = a:FindFirstChildOfClass("Humanoid")
+        local d = a:FindFirstChild("HumanoidRootPart")
+        local a = workspace.CurrentCamera
+        if not _ or _.Health <= 0 or not d or not a then
+            l:Stop()
+            return
+        end
+        local _ = _.MoveDirection
+        if _.Magnitude > 0.01 then
+            i = math.min(e, i + c)
+            g = _.Unit
+        else
+            i = math.max(0, i - c)
+        end
+        local _ = Vector3.new(g.X, 0, g.Z)
+        local c = Vector3.zero
+        if _.Magnitude > 0 then
+            c = _.Unit * i
+        end
+        local f = a.CFrame.LookVector.Unit
+        local b = g:Dot(f)
+        local _ = b < 0 and -1 or 1
+        local a = Vector3.new(f.X, 0, f.Z)
+        if a.Magnitude > 0 then
+            a = a.Unit
+        end
+        local a = math.abs(g:Dot(a))
+        local _ = f.Y * _ * a
+        local _ = _ * i
+        k.Velocity = Vector3.new(c.X, _, c.Z)
+        local _ = (i / e) * 30
+        local _ = -math.rad(b * _)
+        j.CFrame = CFrame.new(d.Position, d.Position + f) * CFrame.Angles(_, 0, 0)
+    end
+    function l:Start()
+        if h then
+            return
+        end
+        local c = d.Character
+        if not c then
+            return
+        end
+        local _ = c:FindFirstChildOfClass("Humanoid")
+        local c = c:FindFirstChild("HumanoidRootPart")
+        if not _ or not c then
+            return
+        end
+        h = true
+        j = Instance.new("BodyGyro")
+        j.P = 100000
+        j.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        j.CFrame = c.CFrame
+        j.Parent = c
+        k = Instance.new("BodyVelocity")
+        k.P = 10000
+        k.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        k.Velocity = Vector3.new(0, 0, 0)
+        k.Parent = c
+        _.PlatformStand = true
+        f = b.Heartbeat:Connect(a)
+    end
+    function l:Stop()
+        if not h then
+            return
+        end
+        _()
+    end
+    function l:SetMaxSpeed(_)
+        if type(_) == "number" and _ >= 0 then
+            e = _
+        else
+            warn("FlyUtility:SetMaxSpeed requires a non-negative number.")
+        end
+    end
+    function l:GetMaxSpeed()
+        return e
+    end
+    function l:IsFlying()
+        return h
+    end
+    d.CharacterRemoving:Connect(function(_)
+        if h then
+            l:Stop()
+        end
+    end)
+    return l
 end)()
 
 local function miniFling(playerToFling)
@@ -176,20 +786,30 @@ local function miniFling(playerToFling)
         if TCharacter:FindFirstChildOfClass("Humanoid") then
             THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
         end
-        if THumanoid and THumanoid.RootPart then TRootPart = THumanoid.RootPart end
-        if TCharacter:FindFirstChild("Head") then THead = TCharacter.Head end
+        if THumanoid and THumanoid.RootPart then
+            TRootPart = THumanoid.RootPart
+        end
+        if TCharacter:FindFirstChild("Head") then
+            THead = TCharacter.Head
+        end
         if TCharacter:FindFirstChildOfClass("Accessory") then
             Accessory = TCharacter:FindFirstChildOfClass("Accessory")
         end
-        if Accessory and Accessory:FindFirstChild("Handle") then Handle = Accessory.Handle end
-        if not (Character and Humanoid and RootPart) then return end
-        if RootPart.Velocity.Magnitude < 50 then getgenv()._RavionOldPos = RootPart.CFrame end
-        workspace.FallenPartsDestroyHeight = 0/0
+        if Accessory and Accessory:FindFirstChild("Handle") then
+            Handle = Accessory.Handle
+        end
+        if not (Character and Humanoid and RootPart) then
+            return
+        end
+        if RootPart.Velocity.Magnitude < 50 then
+            getgenv()._RavionOldPos = RootPart.CFrame
+        end
+        workspace.FallenPartsDestroyHeight = 0 / 0
         local BV = Instance.new("BodyVelocity")
         BV.Name = "RavionVel"
         BV.Parent = RootPart
         BV.Velocity = Vector3.new(9e8, 9e8, 9e8)
-        BV.MaxForce = Vector3.new(1/0, 1/0, 1/0)
+        BV.MaxForce = Vector3.new(1 / 0, 1 / 0, 1 / 0)
         Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
         local targetPart = THead or TRootPart or Handle
         if targetPart then
@@ -197,13 +817,17 @@ local function miniFling(playerToFling)
             repeat
                 if RootPart and THumanoid then
                     Angle = Angle + 100
-                    RootPart.CFrame = CFrame.new(targetPart.Position) * CFrame.new(0, 1.5, 0) * CFrame.Angles(math.rad(Angle), 0, 0)
+                    RootPart.CFrame = CFrame.new(targetPart.Position)
+                        * CFrame.new(0, 1.5, 0)
+                        * CFrame.Angles(math.rad(Angle), 0, 0)
                     Character:SetPrimaryPartCFrame(RootPart.CFrame)
                     RootPart.Velocity = Vector3.new(9e7, 9e8, 9e7)
                     RootPart.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
                     task.wait()
                 end
-            until targetPart.Velocity.Magnitude > 500 or targetPart.Parent ~= TargetPlayer.Character or tick() > StartTime + TimeToWait
+            until targetPart.Velocity.Magnitude > 500
+                or targetPart.Parent ~= TargetPlayer.Character
+                or tick() > StartTime + TimeToWait
         else
             notify("Fling", "Can't find a part to fling.")
         end
@@ -212,8 +836,8 @@ local function miniFling(playerToFling)
         workspace.CurrentCamera.CameraSubject = Humanoid
         if getgenv()._RavionOldPos then
             repeat
-                RootPart.CFrame = getgenv()._RavionOldPos * CFrame.new(0, .5, 0)
-                Character:SetPrimaryPartCFrame(getgenv()._RavionOldPos * CFrame.new(0, .5, 0))
+                RootPart.CFrame = getgenv()._RavionOldPos * CFrame.new(0, 0.5, 0)
+                Character:SetPrimaryPartCFrame(getgenv()._RavionOldPos * CFrame.new(0, 0.5, 0))
                 Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
                 task.wait()
             until (RootPart.Position - getgenv()._RavionOldPos.p).Magnitude < 25
@@ -225,7 +849,9 @@ end
 
 local hiddenParent = getHiddenParent()
 local staleFloating = hiddenParent:FindFirstChild("RavionFloating")
-if staleFloating then staleFloating:Destroy() end
+if staleFloating then
+    staleFloating:Destroy()
+end
 
 local floatingGui = Instance.new("ScreenGui")
 floatingGui.Name = "RavionFloating"
@@ -263,8 +889,154 @@ local resizeState = {
 
 local function closeAllMenus()
     for _, st in pairs(floatingBtns) do
-        if st.menu then st.menu.Visible = false end
+        if st.menu then
+            st.menu.Visible = false
+        end
     end
+end
+
+local floatEditor = {
+    gui = nil,
+    overlay = nil,
+    state = nil,
+    armed = false,
+    armedAt = 0,
+    token = 0,
+}
+
+local function tweenTo(obj, duration, props)
+    local tw = TweenService:Create(obj, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
+    tw:Play()
+    return tw
+end
+
+local function ensureEditorGui()
+    if floatEditor.gui and floatEditor.gui.Parent then
+        return
+    end
+
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "Ravion_Editor"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = floatingGui.IgnoreGuiInset
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.DisplayOrder = floatingGui.DisplayOrder + 1
+    gui.Parent = floatingGui.Parent or LocalPlayer:WaitForChild("PlayerGui")
+
+    local overlay = Instance.new("TextButton")
+    overlay.Name = "Dim"
+    overlay.Size = UDim2.fromScale(1, 1)
+    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    overlay.BackgroundTransparency = 1
+    overlay.Text = ""
+    overlay.AutoButtonColor = false
+    overlay.BorderSizePixel = 0
+    overlay.Visible = false
+    overlay.ZIndex = 1
+    overlay.Parent = gui
+
+    overlay.Activated:Connect(function()
+        if floatEditor.canDismiss() then
+            floatEditor.close()
+        end
+    end)
+
+    floatEditor.gui = gui
+    floatEditor.overlay = overlay
+end
+
+function floatEditor.canDismiss()
+    return floatEditor.state ~= nil and floatEditor.armed and os.clock() - floatEditor.armedAt > 0.15
+end
+
+function floatEditor.open(state)
+    local ed = floatEditor
+    if ed.state == state then
+        return
+    end
+    if ed.state then
+        ed.close(true)
+    end
+    ensureEditorGui()
+
+    local w = state.wrapper
+    ed.state = state
+    ed.token += 1
+    ed.armed = false
+
+    dragState.button = nil
+    dragState.moved = false
+    dragState.longPressThread = nil
+
+    if state.moveTween then
+        state.moveTween:Cancel()
+    end
+
+    if w.Parent == floatingGui then
+        state.homePos = w.Position
+        state.homeAbs = w.AbsolutePosition
+    end
+
+    local abs, size = w.AbsolutePosition, w.AbsoluteSize
+    w.AnchorPoint = Vector2.new(0.5, 0.5)
+    w.Position = UDim2.fromOffset(abs.X + size.X / 2, abs.Y + size.Y / 2)
+    w.Parent = ed.gui
+
+    ed.overlay.Visible = true
+    tweenTo(ed.overlay, 0.2, { BackgroundTransparency = 0.45 })
+
+    state.refreshLock()
+    state.menu.Visible = true
+    state.grip.Visible = true
+    state.moveTween = tweenTo(w, 0.22, { Position = UDim2.fromScale(0.5, 0.4) })
+end
+
+function floatEditor.close(instant)
+    local ed = floatEditor
+    local state = ed.state
+    if not state then
+        return
+    end
+
+    ed.state = nil
+    ed.token += 1
+    local token = ed.token
+    local w = state.wrapper
+
+    if state.moveTween then
+        state.moveTween:Cancel()
+    end
+    state.menu.Visible = false
+    state.grip.Visible = false
+    resizeState.button = nil
+
+    local function finish()
+        if ed.token ~= token then
+            return
+        end
+        if w.Parent then
+            w.AnchorPoint = Vector2.zero
+            w.Position = state.homePos
+            w.Parent = floatingGui
+        end
+        if not ed.state and ed.overlay then
+            ed.overlay.Visible = false
+        end
+    end
+
+    if ed.overlay then
+        tweenTo(ed.overlay, 0.2, { BackgroundTransparency = 1 })
+    end
+
+    if instant or not w.Parent then
+        finish()
+        return
+    end
+
+    local size = w.AbsoluteSize
+    local target = UDim2.fromOffset(state.homeAbs.X + size.X / 2, state.homeAbs.Y + size.Y / 2)
+    state.moveTween = tweenTo(w, 0.2, { Position = target })
+    state.moveTween.Completed:Connect(finish)
 end
 
 local function makeFloatingButton(id, labelOrFn, onClick)
@@ -272,10 +1044,15 @@ local function makeFloatingButton(id, labelOrFn, onClick)
         return floatingBtns[id]
     end
 
+    local count = 0
+    for _ in pairs(floatingBtns) do
+        count += 1
+    end
+
     local wrapper = Instance.new("Frame")
     wrapper.Name = "Ravion_" .. id
     wrapper.Size = UDim2.fromOffset(180, 48)
-    wrapper.Position = savedPositions[id] or UDim2.fromOffset(20, 200 + (#floatingBtns * 55))
+    wrapper.Position = savedPositions[id] or UDim2.fromOffset(20, 200 + count * 55)
     wrapper.BackgroundTransparency = 1
     wrapper.ZIndex = 2
     wrapper.Parent = floatingGui
@@ -316,56 +1093,64 @@ local function makeFloatingButton(id, labelOrFn, onClick)
 
     local grip = Instance.new("TextButton")
     grip.Name = "ResizeGrip"
-    grip.Size = UDim2.fromOffset(14, 14)
-    grip.Position = UDim2.new(1, -16, 1, -16)
+    grip.Size = UDim2.fromOffset(20, 20)
+    grip.Position = UDim2.new(1, -22, 1, -22)
     grip.BackgroundColor3 = Color3.fromRGB(120, 180, 255)
-    grip.BackgroundTransparency = 0.4
+    grip.BackgroundTransparency = 0.2
     grip.Text = ""
     grip.BorderSizePixel = 0
     grip.AutoButtonColor = false
+    grip.Visible = false
     grip.ZIndex = 5
     grip.Parent = wrapper
-    Instance.new("UICorner", grip).CornerRadius = UDim.new(0, 3)
+    Instance.new("UICorner", grip).CornerRadius = UDim.new(0, 5)
 
     local menu = Instance.new("Frame")
-    menu.Name = "ContextMenu"
-    menu.Size = UDim2.fromOffset(120, 68)
-    menu.Position = UDim2.new(0, 0, 1, 5)
-    menu.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    menu.BorderSizePixel = 0
+    menu.Name = "EditOptions"
+    menu.Size = UDim2.fromOffset(252, 74)
+    menu.AnchorPoint = Vector2.new(0.5, 0)
+    menu.Position = UDim2.new(0.5, 0, 1, 14)
+    menu.BackgroundTransparency = 1
     menu.Visible = false
     menu.ZIndex = 10
     menu.Parent = wrapper
-    Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 6)
-    local mstroke = Instance.new("UIStroke", menu)
-    mstroke.Color = Color3.fromRGB(120, 180, 255)
-    mstroke.Transparency = 0.4
 
-    local lockBtn = Instance.new("TextButton")
-    lockBtn.Size = UDim2.new(1, -8, 0, 26)
-    lockBtn.Position = UDim2.fromOffset(4, 4)
-    lockBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    lockBtn.Text = "Lock"
-    lockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    lockBtn.Font = Enum.Font.Gotham
-    lockBtn.TextSize = 13
-    lockBtn.BorderSizePixel = 0
-    lockBtn.ZIndex = 11
-    lockBtn.Parent = menu
-    Instance.new("UICorner", lockBtn).CornerRadius = UDim.new(0, 4)
+    local function makeOption(name, text, x)
+        local b = Instance.new("TextButton")
+        b.Name = name
+        b.Size = UDim2.fromOffset(122, 40)
+        b.Position = UDim2.fromOffset(x, 0)
+        b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        b.Text = text
+        b.TextColor3 = Color3.fromRGB(255, 255, 255)
+        b.Font = Enum.Font.GothamBold
+        b.TextSize = 14
+        b.BorderSizePixel = 0
+        b.AutoButtonColor = true
+        b.ZIndex = 11
+        b.Parent = menu
+        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+        local s = Instance.new("UIStroke", b)
+        s.Color = Color3.fromRGB(120, 180, 255)
+        s.Thickness = 1.2
+        s.Transparency = 0.4
+        return b, s
+    end
 
-    local resetBtn = Instance.new("TextButton")
-    resetBtn.Size = UDim2.new(1, -8, 0, 26)
-    resetBtn.Position = UDim2.fromOffset(4, 34)
-    resetBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    resetBtn.Text = "Reset Size"
-    resetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    resetBtn.Font = Enum.Font.Gotham
-    resetBtn.TextSize = 13
-    resetBtn.BorderSizePixel = 0
-    resetBtn.ZIndex = 11
-    resetBtn.Parent = menu
-    Instance.new("UICorner", resetBtn).CornerRadius = UDim.new(0, 4)
+    local resetBtn = makeOption("ResetSize", "Reset Size", 0)
+    local lockBtn, lockStroke = makeOption("Lock", "Lock", 130)
+
+    local hint = Instance.new("TextLabel")
+    hint.Name = "Hint"
+    hint.Size = UDim2.fromOffset(252, 20)
+    hint.Position = UDim2.fromOffset(0, 50)
+    hint.BackgroundTransparency = 1
+    hint.Text = "Drag the corner to resize  •  Tap anywhere to close"
+    hint.TextColor3 = Color3.fromRGB(210, 210, 210)
+    hint.Font = Enum.Font.Gotham
+    hint.TextSize = 11
+    hint.ZIndex = 11
+    hint.Parent = menu
 
     local state = {
         id = id,
@@ -379,7 +1164,18 @@ local function makeFloatingButton(id, labelOrFn, onClick)
         locked = false,
         originalSize = wrapper.Size,
         onClick = onClick,
+        homePos = wrapper.Position,
+        homeAbs = Vector2.zero,
+        moveTween = nil,
     }
+
+    state.refreshLock = function()
+        lockBtn.Text = state.locked and "Unlock" or "Lock"
+        lockBtn.BackgroundColor3 = state.locked and Color3.fromRGB(70, 58, 20) or Color3.fromRGB(30, 30, 30)
+        lockStroke.Color = state.locked and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(120, 180, 255)
+        lockIcon.Visible = state.locked
+        stroke.Color = state.locked and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(120, 180, 255)
+    end
 
     state.updateLabel = function()
         btn.Text = type(labelOrFn) == "function" and labelOrFn() or labelOrFn
@@ -387,9 +1183,18 @@ local function makeFloatingButton(id, labelOrFn, onClick)
     state.updateLabel()
 
     btn.InputBegan:Connect(function(input)
-        if input.UserInputType ~= Enum.UserInputType.MouseButton1
-        and input.UserInputType ~= Enum.UserInputType.Touch then return end
-        if dragState.button then return end
+        if
+            input.UserInputType ~= Enum.UserInputType.MouseButton1
+            and input.UserInputType ~= Enum.UserInputType.Touch
+        then
+            return
+        end
+        if floatEditor.state then
+            return
+        end
+        if dragState.button then
+            return
+        end
 
         dragState.button = state
         dragState.dragStart = input.Position
@@ -397,84 +1202,118 @@ local function makeFloatingButton(id, labelOrFn, onClick)
         dragState.moved = false
         dragState.longPressFired = false
 
-        if dragState.longPressThread then task.cancel(dragState.longPressThread) end
+        if dragState.longPressThread then
+            task.cancel(dragState.longPressThread)
+        end
         dragState.longPressThread = task.delay(0.6, function()
             if dragState.button == state and not dragState.moved then
                 dragState.longPressFired = true
-                closeAllMenus()
-                menu.Visible = true
+                floatEditor.open(state)
             end
         end)
     end)
 
+    btn.Activated:Connect(function()
+        if floatEditor.state == state and floatEditor.canDismiss() then
+            floatEditor.close()
+        end
+    end)
+
     grip.InputBegan:Connect(function(input)
-        if input.UserInputType ~= Enum.UserInputType.MouseButton1
-        and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        if
+            input.UserInputType ~= Enum.UserInputType.MouseButton1
+            and input.UserInputType ~= Enum.UserInputType.Touch
+        then
+            return
+        end
+        if floatEditor.state ~= state then
+            return
+        end
         resizeState.button = state
         resizeState.startPos = input.Position
         resizeState.startSize = wrapper.Size
     end)
 
-    lockBtn.MouseButton1Click:Connect(function()
+    lockBtn.Activated:Connect(function()
         state.locked = not state.locked
-        lockBtn.Text = state.locked and "Unlock" or "Lock"
-        lockIcon.Visible = state.locked
-        stroke.Color = state.locked and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(120, 180, 255)
-        menu.Visible = false
+        state.refreshLock()
     end)
 
-    resetBtn.MouseButton1Click:Connect(function()
-        wrapper.Size = state.originalSize
-        menu.Visible = false
+    resetBtn.Activated:Connect(function()
+        tweenTo(wrapper, 0.15, { Size = state.originalSize })
     end)
 
+    state.refreshLock()
     floatingBtns[id] = state
     return state
 end
 
 local function removeFloatingButton(id)
     if floatingBtns[id] then
+        if floatEditor.state == floatingBtns[id] then
+            floatEditor.close(true)
+        end
         if dragState.button == floatingBtns[id] then
-            if dragState.longPressThread then task.cancel(dragState.longPressThread) end
+            if dragState.longPressThread then
+                task.cancel(dragState.longPressThread)
+            end
             dragState.button = nil
         end
         if resizeState.button == floatingBtns[id] then
             resizeState.button = nil
         end
-        if floatingBtns[id].wrapper then floatingBtns[id].wrapper:Destroy() end
+        if floatingBtns[id].wrapper then
+            floatingBtns[id].wrapper:Destroy()
+        end
         floatingBtns[id] = nil
     end
 end
 
 UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType ~= Enum.UserInputType.MouseMovement
-    and input.UserInputType ~= Enum.UserInputType.Touch then return end
+    if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then
+        return
+    end
 
     if dragState.button and not dragState.button.locked then
         local delta = input.Position - dragState.dragStart
         if delta.Magnitude > 6 then
             dragState.moved = true
-            if dragState.longPressThread then task.cancel(dragState.longPressThread); dragState.longPressThread = nil end
+            if dragState.longPressThread then
+                task.cancel(dragState.longPressThread)
+                dragState.longPressThread = nil
+            end
             dragState.button.wrapper.Position = UDim2.new(
-                dragState.startPos.X.Scale, dragState.startPos.X.Offset + delta.X,
-                dragState.startPos.Y.Scale, dragState.startPos.Y.Offset + delta.Y
+                dragState.startPos.X.Scale,
+                dragState.startPos.X.Offset + delta.X,
+                dragState.startPos.Y.Scale,
+                dragState.startPos.Y.Offset + delta.Y
             )
         end
     end
 
     if resizeState.button then
+        local mult = floatEditor.state == resizeState.button and 2 or 1
         local delta = input.Position - resizeState.startPos
-        local newX = math.clamp(resizeState.startSize.X.Offset + delta.X, 80, 500)
-        local newY = math.clamp(resizeState.startSize.Y.Offset + delta.Y, 30, 200)
+        local newX = math.clamp(resizeState.startSize.X.Offset + delta.X * mult, 80, 500)
+        local newY = math.clamp(resizeState.startSize.Y.Offset + delta.Y * mult, 30, 200)
         resizeState.button.wrapper.Size = UDim2.fromOffset(newX, newY)
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType ~= Enum.UserInputType.MouseButton1
-    and input.UserInputType ~= Enum.UserInputType.Touch then return end
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
+        return
+    end
 
-    if dragState.longPressThread then task.cancel(dragState.longPressThread); dragState.longPressThread = nil end
+    if floatEditor.state and not floatEditor.armed then
+        floatEditor.armed = true
+        floatEditor.armedAt = os.clock()
+    end
+
+    if dragState.longPressThread then
+        task.cancel(dragState.longPressThread)
+        dragState.longPressThread = nil
+    end
 
     if dragState.button then
         local state = dragState.button
@@ -486,7 +1325,9 @@ UserInputService.InputEnded:Connect(function(input)
 
         if shouldClick then
             local ok, err = pcall(state.onClick)
-            if not ok then warn("Floating button error:", err) end
+            if not ok then
+                warn("Floating button error:", err)
+            end
         end
     end
 
@@ -497,23 +1338,7 @@ end)
 
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Escape then
-        closeAllMenus()
-        return
-    end
-    if input.UserInputType ~= Enum.UserInputType.MouseButton1
-    and input.UserInputType ~= Enum.UserInputType.Touch then return end
-
-    local pos = input.Position
-    for _, st in pairs(floatingBtns) do
-        if st.menu and st.menu.Visible then
-            local mAbs = st.menu.AbsolutePosition
-            local mSize = st.menu.AbsoluteSize
-            local inside = pos.X >= mAbs.X and pos.X <= mAbs.X + mSize.X
-                       and pos.Y >= mAbs.Y and pos.Y <= mAbs.Y + mSize.Y
-            if not inside then
-                st.menu.Visible = false
-            end
-        end
+        floatEditor.close()
     end
 end)
 
@@ -533,7 +1358,9 @@ local infJump, infJumpConnection, landedConnection = false, nil, nil
 local infJumps, infJumpDeb, infJumpOnlyTwo, landed = 0, false, false, true
 
 local function setupHumanoid(humanoid)
-    if landedConnection then landedConnection:Disconnect() end
+    if landedConnection then
+        landedConnection:Disconnect()
+    end
     landedConnection = humanoid.StateChanged:Connect(function(_, n)
         if n == Enum.HumanoidStateType.Landed or n == Enum.HumanoidStateType.Running then
             landed = true
@@ -544,7 +1371,9 @@ end
 
 local function getRayHitPosition()
     local mouse = LocalPlayer:GetMouse()
-    if not mouse then return nil end
+    if not mouse then
+        return nil
+    end
     local camera = workspace.CurrentCamera
     local unitRay = camera:ScreenPointToRay(mouse.X, mouse.Y)
     local params = RaycastParams.new()
@@ -560,7 +1389,9 @@ local wallhopCooldown = 0
 local wallhopFlashTween = nil
 
 local function wallhopFlash()
-    if wallhopFlashTween then wallhopFlashTween:Cancel() end
+    if wallhopFlashTween then
+        wallhopFlashTween:Cancel()
+    end
     flashFrame.BackgroundTransparency = 0.88
     wallhopFlashTween = TweenService:Create(
         flashFrame,
@@ -573,33 +1404,49 @@ end
 RunService.RenderStepped:Connect(function()
     if not wallhopEnabled then
         local cam = workspace.CurrentCamera
-        if cam then wallhopLastCamX = cam.CFrame.LookVector.X end
+        if cam then
+            wallhopLastCamX = cam.CFrame.LookVector.X
+        end
         return
     end
 
     local cam = workspace.CurrentCamera
-    if not cam then return end
+    if not cam then
+        return
+    end
 
     local currentX = cam.CFrame.LookVector.X
     local diff = currentX - wallhopLastCamX
     wallhopLastCamX = currentX
 
     local now = os.clock()
-    if now < wallhopCooldown then return end
-    if diff <= 0.15 then return end
+    if now < wallhopCooldown then
+        return
+    end
+    if diff <= 0.15 then
+        return
+    end
 
     local char = LocalPlayer.Character
-    if not char then return end
+    if not char then
+        return
+    end
     local root = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChildOfClass("Humanoid")
-    if not root or not hum then return end
-    if hum:GetState() == Enum.HumanoidStateType.Seated then return end
+    if not root or not hum then
+        return
+    end
+    if hum:GetState() == Enum.HumanoidStateType.Seated then
+        return
+    end
 
     local params = RaycastParams.new()
     params.FilterDescendantsInstances = { char }
     params.FilterType = Enum.RaycastFilterType.Exclude
     local hit = workspace:Raycast(root.Position, root.CFrame.LookVector * 3, params)
-    if not hit or not hit.Instance or not hit.Instance:IsA("BasePart") or not hit.Instance.CanCollide then return end
+    if not hit or not hit.Instance or not hit.Instance:IsA("BasePart") or not hit.Instance.CanCollide then
+        return
+    end
 
     hum:ChangeState(Enum.HumanoidStateType.Jumping)
     wallhopCooldown = now + 0.05
@@ -614,26 +1461,40 @@ universalTab:CreateText({ name = "Credits", text = "Based on YARHM by Aetherion"
 universalTab:CreateButton({
     name = "Join our Discord",
     callback = function()
-        if setclipboard then setclipboard("https://discord.gg/2jbYxvDkxr") end
+        if setclipboard then
+            setclipboard("https://discord.gg/2jbYxvDkxr")
+        end
         notify("Discord", "Link copied to clipboard!")
     end,
 })
 
 universalTab:CreateSection({ name = "Fly" })
 universalTab:CreateToggle({
-    name = "OP Fly", flag = "FlyEnabled",
+    name = "OP Fly",
+    flag = "FlyEnabled",
     callback = function(state)
-        if state then flyutility:Start(LocalPlayer.Character) else flyutility:Stop(LocalPlayer.Character) end
+        if state then
+            flyutility:Start(LocalPlayer.Character)
+        else
+            flyutility:Stop(LocalPlayer.Character)
+        end
     end,
 })
 universalTab:CreateSlider({
-    name = "Fly Speed", range = { 50, 350 }, increment = 10, value = 50, flag = "FlySpeed",
-    callback = function(v) flyutility:SetMaxSpeed(v) end,
+    name = "Fly Speed",
+    range = { 50, 350 },
+    increment = 10,
+    value = 50,
+    flag = "FlySpeed",
+    callback = function(v)
+        flyutility:SetMaxSpeed(v)
+    end,
 })
 
 universalTab:CreateSection({ name = "Jumping" })
 universalTab:CreateToggle({
-    name = "Infinite Jump", flag = "InfJump",
+    name = "Infinite Jump",
+    flag = "InfJump",
     callback = function(state)
         infJump = state
         if state then
@@ -644,50 +1505,67 @@ universalTab:CreateToggle({
             infJumpConnection = UserInputService.JumpRequest:Connect(function()
                 local character = LocalPlayer.Character
                 local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
-                if not humanoid then return end
-                if infJumpOnlyTwo and infJumps >= 2 and not landed then return end
+                if not humanoid then
+                    return
+                end
+                if infJumpOnlyTwo and infJumps >= 2 and not landed then
+                    return
+                end
                 if not infJumpDeb then
                     infJumpDeb = true
                     humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                     infJumps += 1
                     landed = false
-                    task.wait(.1)
+                    task.wait(0.1)
                     infJumpDeb = false
                 end
             end)
         else
-            if infJumpConnection then infJumpConnection:Disconnect() end
-            if landedConnection then landedConnection:Disconnect() end
+            if infJumpConnection then
+                infJumpConnection:Disconnect()
+            end
+            if landedConnection then
+                landedConnection:Disconnect()
+            end
             infJumps, landed = 0, true
         end
     end,
 })
 universalTab:CreateToggle({
-    name = "Limit Infinite Jump to 2", flag = "InfJumpLimit",
-    callback = function(state) infJumpOnlyTwo = state; infJumps = 0 end,
+    name = "Limit Infinite Jump to 2",
+    flag = "InfJumpLimit",
+    callback = function(state)
+        infJumpOnlyTwo = state
+        infJumps = 0
+    end,
 })
 
 universalTab:CreateSection({ name = "Wallhop" })
 universalTab:CreateToggle({
-    name = "Wallhop", flag = "Wallhop",
+    name = "Wallhop",
+    flag = "Wallhop",
     callback = function(state)
         wallhopEnabled = state
-        if floatingBtns["Wallhop"] then floatingBtns["Wallhop"].updateLabel() end
+        if floatingBtns["Wallhop"] then
+            floatingBtns["Wallhop"].updateLabel()
+        end
         notify("Wallhop", state and "Enabled" or "Disabled")
     end,
 })
 universalTab:CreateToggle({
-    name = "Floating Wallhop Button", flag = "WallhopFloat", forgetState = true,
+    name = "Floating Wallhop Button",
+    flag = "WallhopFloat",
+    forgetState = true,
     callback = function(state)
         if state then
-            makeFloatingButton(
-                "Wallhop",
-                function() return "Wallhop " .. (wallhopEnabled and "ON" or "OFF") end,
-                function()
-                    wallhopEnabled = not wallhopEnabled
-                    if floatingBtns["Wallhop"] then floatingBtns["Wallhop"].updateLabel() end
+            makeFloatingButton("Wallhop", function()
+                return "Wallhop " .. (wallhopEnabled and "ON" or "OFF")
+            end, function()
+                wallhopEnabled = not wallhopEnabled
+                if floatingBtns["Wallhop"] then
+                    floatingBtns["Wallhop"].updateLabel()
                 end
-            )
+            end)
         else
             removeFloatingButton("Wallhop")
         end
@@ -699,23 +1577,26 @@ local hitboxExp = 1
 local aggressiveExp = false
 local loopHitboxCon = nil
 universalTab:CreateInput({
-    name = "Hitbox Expander", placeholder = "Size (1 = normal)",
+    name = "Hitbox Expander",
+    placeholder = "Size (1 = normal)",
     callback = function(text)
         hitboxExp = tonumber(text) or 1
         for _, v in ipairs(Players:GetPlayers()) do
-            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild('HumanoidRootPart') then
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
                 local sizeArg = tonumber(text)
                 if aggressiveExp then
                     for _, part in ipairs(v.Character:GetChildren()) do
                         if part:IsA("BasePart") then
-                            part.Size = (not sizeArg or sizeArg == 1) and Vector3.new(2,1,1) or Vector3.new(sizeArg,sizeArg,sizeArg)
+                            part.Size = (not sizeArg or sizeArg == 1) and Vector3.new(2, 1, 1)
+                                or Vector3.new(sizeArg, sizeArg, sizeArg)
                             part.Transparency = 0.2
                         end
                     end
                 else
-                    local root = v.Character:FindFirstChild('HumanoidRootPart')
+                    local root = v.Character:FindFirstChild("HumanoidRootPart")
                     if root and root:IsA("BasePart") then
-                        root.Size = (not sizeArg or sizeArg == 1) and Vector3.new(2,1,1) or Vector3.new(sizeArg,sizeArg,sizeArg)
+                        root.Size = (not sizeArg or sizeArg == 1) and Vector3.new(2, 1, 1)
+                            or Vector3.new(sizeArg, sizeArg, sizeArg)
                         root.Transparency = 0.2
                         root.CanCollide = false
                     end
@@ -726,14 +1607,16 @@ universalTab:CreateInput({
     end,
 })
 universalTab:CreateToggle({
-    name = "Loop Hitbox Expansion", flag = "LoopHitbox",
+    name = "Loop Hitbox Expansion",
+    flag = "LoopHitbox",
     callback = function(state)
         if state then
             loopHitboxCon = RunService.Heartbeat:Connect(function()
                 for _, v in ipairs(Players:GetPlayers()) do
-                    if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild('HumanoidRootPart') then
+                    if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
                         local sizeArg = tonumber(hitboxExp)
-                        local size = (not sizeArg or sizeArg == 1) and Vector3.new(2,1,1) or Vector3.new(sizeArg,sizeArg,sizeArg)
+                        local size = (not sizeArg or sizeArg == 1) and Vector3.new(2, 1, 1)
+                            or Vector3.new(sizeArg, sizeArg, sizeArg)
                         if aggressiveExp then
                             for _, part in ipairs(v.Character:GetChildren()) do
                                 if part:IsA("BasePart") then
@@ -742,7 +1625,7 @@ universalTab:CreateToggle({
                                 end
                             end
                         else
-                            local root = v.Character:FindFirstChild('HumanoidRootPart')
+                            local root = v.Character:FindFirstChild("HumanoidRootPart")
                             if root and root:IsA("BasePart") then
                                 root.Size = size
                                 root.Transparency = 0.2
@@ -759,17 +1642,23 @@ universalTab:CreateToggle({
     end,
 })
 universalTab:CreateToggle({
-    name = "Aggressive Hitbox (All Parts)", flag = "AggressiveHitbox",
-    callback = function(state) aggressiveExp = state end,
+    name = "Aggressive Hitbox (All Parts)",
+    flag = "AggressiveHitbox",
+    callback = function(state)
+        aggressiveExp = state
+    end,
 })
 
 universalTab:CreateSection({ name = "Speed & View" })
 universalTab:CreateInput({
-    name = "Walkspeed", placeholder = "16",
+    name = "Walkspeed",
+    placeholder = "16",
     callback = function(text)
         local char = LocalPlayer.Character
         local hu = char and char:FindFirstChildOfClass("Humanoid")
-        if not hu then return end
+        if not hu then
+            return
+        end
         hu.WalkSpeed = tonumber(text) or 16
         ws = tonumber(text) or 16
         notify("Walkspeed", "Set to " .. hu.WalkSpeed)
@@ -779,7 +1668,9 @@ universalTab:CreateButton({
     name = "Increase Walkspeed",
     callback = function()
         local hu = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if not hu then return end
+        if not hu then
+            return
+        end
         ws = ws + wsIncrement
         hu.WalkSpeed = hu.WalkSpeed + wsIncrement
         notify("Walkspeed", "Now " .. hu.WalkSpeed)
@@ -789,29 +1680,40 @@ universalTab:CreateButton({
     name = "Decrease Walkspeed",
     callback = function()
         local hu = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if not hu then return end
+        if not hu then
+            return
+        end
         ws = ws - wsIncrement
         hu.WalkSpeed = hu.WalkSpeed - wsIncrement
         notify("Walkspeed", "Now " .. hu.WalkSpeed)
     end,
 })
 universalTab:CreateInput({
-    name = "Walkspeed Increment", placeholder = "2",
+    name = "Walkspeed Increment",
+    placeholder = "2",
     callback = function(text)
         wsIncrement = tonumber(text) or 2
     end,
 })
 universalTab:CreateInput({
-    name = "Field of View", placeholder = "70",
+    name = "Field of View",
+    placeholder = "70",
     callback = function(text)
         local v = tonumber(text) or 70
-        TweenService:Create(workspace.CurrentCamera, TweenInfo.new(1, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), { FieldOfView = v }):Play()
+        TweenService:Create(
+            workspace.CurrentCamera,
+            TweenInfo.new(1, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out),
+            { FieldOfView = v }
+        ):Play()
         fov = v
     end,
 })
 universalTab:CreateToggle({
-    name = "Loop Walkspeed & FOV", flag = "LoopWSFOV",
-    callback = function(state) loopFovWs = state end,
+    name = "Loop Walkspeed & FOV",
+    flag = "LoopWSFOV",
+    callback = function(state)
+        loopFovWs = state
+    end,
 })
 
 RunService.RenderStepped:Connect(function()
@@ -826,47 +1728,73 @@ end)
 
 universalTab:CreateSection({ name = "Teleports" })
 universalTab:CreateToggle({
-    name = "CTRL+Click Teleport", flag = "CtrlClickTP",
-    callback = function(state) ctrlClickTP = state end,
+    name = "CTRL+Click Teleport",
+    flag = "CtrlClickTP",
+    callback = function(state)
+        ctrlClickTP = state
+    end,
 })
 universalTab:CreateInput({
-    name = "Teleport to Player", placeholder = "Player name",
+    name = "Teleport to Player",
+    placeholder = "Player name",
     callback = function(text)
         local targetName = getPlayer(text, LocalPlayer)
         if not targetName then
-            notify("Teleport", "Player not found."); return
+            notify("Teleport", "Player not found.")
+            return
         end
         local tp = Players:FindFirstChild(targetName)
-        if not (tp and tp.Character) then return end
+        if not (tp and tp.Character) then
+            return
+        end
         local targetHrp = tp.Character:FindFirstChild("HumanoidRootPart")
-        if not targetHrp then return end
+        if not targetHrp then
+            return
+        end
         local lh = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if lh then lh.CFrame = CFrame.new(targetHrp.Position + Vector3.new(0, 5, 0)) end
+        if lh then
+            lh.CFrame = CFrame.new(targetHrp.Position + Vector3.new(0, 5, 0))
+        end
     end,
 })
 universalTab:CreateButton({
     name = "Spectate Players",
     callback = function()
         local listplayers = Players:GetPlayers()
-        if #listplayers == 0 then return end
+        if #listplayers == 0 then
+            return
+        end
         local i = 1
         local cur = listplayers[i]
-        if not (cur and cur.Character and cur.Character:FindFirstChildOfClass("Humanoid")) then return end
+        if not (cur and cur.Character and cur.Character:FindFirstChildOfClass("Humanoid")) then
+            return
+        end
         workspace.CurrentCamera.CameraSubject = cur.Character:FindFirstChildOfClass("Humanoid")
         local loop
         loop = task.spawn(function()
             while true do
                 local subj = workspace.CurrentCamera.CameraSubject
-                dialog("Spectating", "Now spectating: " .. (subj and subj.Parent and subj.Parent.Name or "?"), {"Previous", "Stop", "Next"})
+                dialog(
+                    "Spectating",
+                    "Now spectating: " .. (subj and subj.Parent and subj.Parent.Name or "?"),
+                    { "Previous", "Stop", "Next" }
+                )
                 local action = waitfordialog()
                 if action == "Stop" then
                     local myH = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                     workspace.CurrentCamera.CameraSubject = myH
-                    task.cancel(loop); break
+                    task.cancel(loop)
+                    break
                 elseif action == "Next" then
-                    i = i + 1; if i > #listplayers then i = 1 end
+                    i = i + 1
+                    if i > #listplayers then
+                        i = 1
+                    end
                 elseif action == "Previous" then
-                    i = i - 1; if i < 1 then i = #listplayers end
+                    i = i - 1
+                    if i < 1 then
+                        i = #listplayers
+                    end
                 end
                 cur = listplayers[i]
                 if cur and cur.Character and cur.Character:FindFirstChildOfClass("Humanoid") then
@@ -878,25 +1806,35 @@ universalTab:CreateButton({
 })
 
 UserInputService.InputBegan:Connect(function(inp, proc)
-    if proc then return end
-    if ctrlClickTP and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
-    and inp.UserInputType == Enum.UserInputType.MouseButton1 then
+    if proc then
+        return
+    end
+    if
+        ctrlClickTP
+        and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+        and inp.UserInputType == Enum.UserInputType.MouseButton1
+    then
         local pos = getRayHitPosition()
         if not pos then
-            notify("Teleport", "Couldn't find a place to teleport to."); return
+            notify("Teleport", "Couldn't find a place to teleport to.")
+            return
         end
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then hrp.CFrame = CFrame.new(pos) end
+        if hrp then
+            hrp.CFrame = CFrame.new(pos)
+        end
     end
 end)
 
 universalTab:CreateSection({ name = "Aim Lock" })
 universalTab:CreateInput({
-    name = "Aim Lock Target", placeholder = "Player name",
+    name = "Aim Lock Target",
+    placeholder = "Player name",
     callback = function(text)
         local name = getPlayer(text, LocalPlayer)
         if not name or not Players:FindFirstChild(name) then
-            notify("Aim Lock", "Player not found."); return
+            notify("Aim Lock", "Player not found.")
+            return
         end
         aimTarget = Players:FindFirstChild(name)
         notify("Aim Lock", "Target set to " .. aimTarget.Name)
@@ -905,14 +1843,21 @@ universalTab:CreateInput({
 universalTab:CreateButton({
     name = "Aim Lock On",
     callback = function()
-        if aimlockConn then aimlockConn:Disconnect() end
+        if aimlockConn then
+            aimlockConn:Disconnect()
+        end
         if not aimTarget then
-            notify("Aim Lock", "Set a target first."); return
+            notify("Aim Lock", "Set a target first.")
+            return
         end
         aimlockConn = RunService.RenderStepped:Connect(function()
-            if not aimTarget then return end
+            if not aimTarget then
+                return
+            end
             local hrp = aimTarget.Character and aimTarget.Character:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
+            if not hrp then
+                return
+            end
             workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, hrp.Position)
         end)
         notify("Aim Lock", "Aim lock is now on.")
@@ -921,18 +1866,23 @@ universalTab:CreateButton({
 universalTab:CreateButton({
     name = "Aim Lock Off",
     callback = function()
-        if aimlockConn then aimlockConn:Disconnect(); aimlockConn = nil end
+        if aimlockConn then
+            aimlockConn:Disconnect()
+            aimlockConn = nil
+        end
         notify("Aim Lock", "Aim lock is now off.")
     end,
 })
 
 universalTab:CreateSection({ name = "Fling" })
 universalTab:CreateInput({
-    name = "Target Fling Player", placeholder = "Player name",
+    name = "Target Fling Player",
+    placeholder = "Player name",
     callback = function(text)
         local name = getPlayer(text, LocalPlayer)
         if not name or not Players:FindFirstChild(name) then
-            notify("Fling", "Player not found."); return
+            notify("Fling", "Player not found.")
+            return
         end
         playerToFling = Players:FindFirstChild(name)
         notify("Fling", "Target set to " .. playerToFling.Name)
@@ -942,16 +1892,19 @@ universalTab:CreateButton({
     name = "Fling Target",
     callback = function()
         if not playerToFling or not Players:FindFirstChild(playerToFling.Name) then
-            notify("Fling", "Target a player first."); return
+            notify("Fling", "Target a player first.")
+            return
         end
         if antiFling then
-            notify("Fling", "Turn off anti-fling to use fling."); return
+            notify("Fling", "Turn off anti-fling to use fling.")
+            return
         end
         miniFling(playerToFling)
     end,
 })
 universalTab:CreateToggle({
-    name = "Anti-Fling", flag = "AntiFling",
+    name = "Anti-Fling",
+    flag = "AntiFling",
     callback = function(state)
         antiFling = state
         if state then
@@ -959,8 +1912,10 @@ universalTab:CreateToggle({
             flingDetectionCon = RunService.Heartbeat:Connect(function()
                 for _, pl in ipairs(Players:GetPlayers()) do
                     if pl.Character and pl.Character:IsDescendantOf(workspace) and pl.Character.PrimaryPart then
-                        if pl.Character.PrimaryPart.AssemblyAngularVelocity.Magnitude > 50
-                        or pl.Character.PrimaryPart.AssemblyLinearVelocity.Magnitude > 100 then
+                        if
+                            pl.Character.PrimaryPart.AssemblyAngularVelocity.Magnitude > 50
+                            or pl.Character.PrimaryPart.AssemblyLinearVelocity.Magnitude > 100
+                        then
                             if not detectedPlayers[pl.Name] then
                                 notify("Anti-Fling", "Flinger detected: " .. pl.Name)
                                 detectedPlayers[pl.Name] = true
@@ -970,7 +1925,7 @@ universalTab:CreateToggle({
                                     p.CanCollide = false
                                     p.AssemblyAngularVelocity = Vector3.zero
                                     p.AssemblyLinearVelocity = Vector3.zero
-                                    p.CustomPhysicalProperties = PhysicalProperties.new(0,0,0)
+                                    p.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0)
                                 end
                             end
                         end
@@ -993,8 +1948,12 @@ universalTab:CreateToggle({
                 end
             end)
         else
-            if flingDetectionCon then flingDetectionCon:Disconnect() end
-            if flingNeutralizerCon then flingNeutralizerCon:Disconnect() end
+            if flingDetectionCon then
+                flingDetectionCon:Disconnect()
+            end
+            if flingNeutralizerCon then
+                flingNeutralizerCon:Disconnect()
+            end
             detectedPlayers = {}
             notify("Anti-Fling", "Deactivated.")
         end
@@ -1008,7 +1967,11 @@ universalTab:CreateButton({
         local pl = LocalPlayer
         if getconnections then
             for _, c in pairs(getconnections(pl.Idled)) do
-                if c.Disable then c:Disable() elseif c.Disconnect then c:Disconnect() end
+                if c.Disable then
+                    c:Disable()
+                elseif c.Disconnect then
+                    c:Disconnect()
+                end
             end
         else
             pl.Idled:Connect(function()
@@ -1018,24 +1981,41 @@ universalTab:CreateButton({
         end
     end,
 })
-universalTab:CreateButton({ name = "Hide Menu", callback = function() window:Hide() end })
+universalTab:CreateButton({
+    name = "Hide Menu",
+    callback = function()
+        window:Hide()
+    end,
+})
 universalTab:CreateButton({
     name = "FPS Boost",
     callback = function()
-        dialog("FPS Boosting", "FPS boosting can have unpredictable effects. Continue?", {"FPS boost anyway", "Nevermind"})
+        dialog(
+            "FPS Boosting",
+            "FPS boosting can have unpredictable effects. Continue?",
+            { "FPS boost anyway", "Nevermind" }
+        )
         if waitfordialog() == "FPS boost anyway" then
-            local Terrain = workspace:FindFirstChildOfClass('Terrain')
+            local Terrain = workspace:FindFirstChildOfClass("Terrain")
             if Terrain then
                 Terrain.WaterWaveSize, Terrain.WaterWaveSpeed = 0, 0
                 Terrain.WaterReflectance, Terrain.WaterTransparency = 0, 0
             end
             Lighting.GlobalShadows = false
             Lighting.FogEnd = 9e9
-            pcall(function() settings().Rendering.QualityLevel = 1 end)
+            pcall(function()
+                settings().Rendering.QualityLevel = 1
+            end)
             for _, v in pairs(game:GetDescendants()) do
-                if v:IsA("Part") or v:IsA("UnionOperation") or v:IsA("MeshPart")
-                or v:IsA("CornerWedgePart") or v:IsA("TrussPart") then
-                    v.Material = "Plastic"; v.Reflectance = 0
+                if
+                    v:IsA("Part")
+                    or v:IsA("UnionOperation")
+                    or v:IsA("MeshPart")
+                    or v:IsA("CornerWedgePart")
+                    or v:IsA("TrussPart")
+                then
+                    v.Material = "Plastic"
+                    v.Reflectance = 0
                 elseif v:IsA("Decal") then
                     v.Transparency = 1
                 elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
@@ -1045,9 +2025,13 @@ universalTab:CreateButton({
                 end
             end
             for _, v in pairs(Lighting:GetDescendants()) do
-                if v:IsA("BlurEffect") or v:IsA("SunRaysEffect")
-                or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect")
-                or v:IsA("DepthOfFieldEffect") then
+                if
+                    v:IsA("BlurEffect")
+                    or v:IsA("SunRaysEffect")
+                    or v:IsA("ColorCorrectionEffect")
+                    or v:IsA("BloomEffect")
+                    or v:IsA("DepthOfFieldEffect")
+                then
                     v.Enabled = false
                 end
             end
@@ -1057,12 +2041,16 @@ universalTab:CreateButton({
 universalTab:CreateButton({
     name = "Noclip",
     callback = function()
-        if noclipLoop then noclipLoop:Disconnect() end
+        if noclipLoop then
+            noclipLoop:Disconnect()
+        end
         noclipLoop = RunService.Stepped:Connect(function()
             local char = LocalPlayer.Character
             if char then
                 for _, child in pairs(char:GetDescendants()) do
-                    if child:IsA("BasePart") and child.CanCollide then child.CanCollide = false end
+                    if child:IsA("BasePart") and child.CanCollide then
+                        child.CanCollide = false
+                    end
                 end
             end
         end)
@@ -1071,7 +2059,10 @@ universalTab:CreateButton({
 universalTab:CreateButton({
     name = "Reclip",
     callback = function()
-        if noclipLoop then noclipLoop:Disconnect(); noclipLoop = nil end
+        if noclipLoop then
+            noclipLoop:Disconnect()
+            noclipLoop = nil
+        end
         notify("Reclip", "You may need to reset your character.")
     end,
 })
@@ -1093,28 +2084,34 @@ local mm2Tab = window:CreateTab({ name = "Murder Mystery 2", icon = 803878630649
 local mm2EspParent = getHiddenParent()
 local mm2Esp = espind.new({ ArrowEdgePadding = 50, ArrowShowDistanceText = false, Parent = mm2EspParent })
 
-local playerESP       = false
-local gunDropESP      = false
-local trapDetection   = false
-local hideMeEsp       = false
+local playerESP = false
+local gunDropESP = false
+local trapDetection = false
+local hideMeEsp = false
 local autoGetDroppedGun = false
-local gunDropTakeExp  = false
-local instakillshoot  = false
-local spawnAtPlayer   = false
-local loopThrow       = false
-local shootOffset     = 2.8
+local gunDropTakeExp = false
+local instakillshoot = false
+local spawnAtPlayer = false
+local loopThrow = false
+local shootOffset = 2.8
 local offsetToPingMult = 1
-local playerData      = {}
+local playerData = {}
 local espRespawnConns = {}
-local flickCooldown   = false
+local flickCooldown = false
 
 local function findMurderer()
     for _, i in ipairs(Players:GetPlayers()) do
-        if i.Backpack:FindFirstChild("Knife") then return i end
+        if i.Backpack:FindFirstChild("Knife") then
+            return i
+        end
     end
     for _, i in ipairs(Players:GetPlayers()) do
-        if not i.Character then continue end
-        if i.Character:FindFirstChild("Knife") then return i end
+        if not i.Character then
+            continue
+        end
+        if i.Character:FindFirstChild("Knife") then
+            return i
+        end
     end
     if playerData then
         for player, data in pairs(playerData) do
@@ -1128,11 +2125,17 @@ end
 
 local function findSheriff()
     for _, i in ipairs(Players:GetPlayers()) do
-        if i.Backpack:FindFirstChild("Gun") then return i end
+        if i.Backpack:FindFirstChild("Gun") then
+            return i
+        end
     end
     for _, i in ipairs(Players:GetPlayers()) do
-        if not i.Character then continue end
-        if i.Character:FindFirstChild("Gun") then return i end
+        if not i.Character then
+            continue
+        end
+        if i.Character:FindFirstChild("Gun") then
+            return i
+        end
     end
     if playerData then
         for player, data in pairs(playerData) do
@@ -1146,30 +2149,58 @@ end
 
 local function findSheriffThatsNotMe()
     for _, i in ipairs(Players:GetPlayers()) do
-        if i == LocalPlayer then continue end
-        if i.Backpack:FindFirstChild("Gun") then return i end
+        if i == LocalPlayer then
+            continue
+        end
+        if i.Backpack:FindFirstChild("Gun") then
+            return i
+        end
     end
     for _, i in ipairs(Players:GetPlayers()) do
-        if i == LocalPlayer then continue end
-        if not i.Character then continue end
-        if i.Character:FindFirstChild("Gun") then return i end
+        if i == LocalPlayer then
+            continue
+        end
+        if not i.Character then
+            continue
+        end
+        if i.Character:FindFirstChild("Gun") then
+            return i
+        end
     end
     return nil
 end
 
 local function reloadMM2ESP()
-    if not playerESP then return end
+    if not playerESP then
+        return
+    end
     mm2Esp:RemoveGroup("players")
     for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer and hideMeEsp then continue end
+        if player == LocalPlayer and hideMeEsp then
+            continue
+        end
         if player.Character then
             local cfg
             if player == findMurderer() then
-                cfg = { AccentColor = Color3.new(1,0,0.0157), ArrowShow = true, ArrowMinDistance = 999999, ArrowSize = UDim2.new(0,40,0,40), LabelText = "Murderer", ShowLabel = true, GroupName = "players" }
+                cfg = {
+                    AccentColor = Color3.new(1, 0, 0.0157),
+                    ArrowShow = true,
+                    ArrowMinDistance = 999999,
+                    ArrowSize = UDim2.new(0, 40, 0, 40),
+                    LabelText = "Murderer",
+                    ShowLabel = true,
+                    GroupName = "players",
+                }
             elseif player == findSheriff() then
-                cfg = { AccentColor = Color3.new(0,0.6,1), ArrowShow = false, ShowLabel = false, GroupName = "players" }
+                cfg =
+                    { AccentColor = Color3.new(0, 0.6, 1), ArrowShow = false, ShowLabel = false, GroupName = "players" }
             else
-                cfg = { AccentColor = Color3.new(0,1,0.0314), ArrowShow = false, ShowLabel = false, GroupName = "players" }
+                cfg = {
+                    AccentColor = Color3.new(0, 1, 0.0314),
+                    ArrowShow = false,
+                    ShowLabel = false,
+                    GroupName = "players",
+                }
             end
             pcall(function()
                 mm2Esp:Add(player.Character, cfg)
@@ -1179,7 +2210,9 @@ local function reloadMM2ESP()
 end
 
 local function hookMM2Player(player)
-    if espRespawnConns[player] then espRespawnConns[player]:Disconnect() end
+    if espRespawnConns[player] then
+        espRespawnConns[player]:Disconnect()
+    end
     espRespawnConns[player] = player.CharacterAdded:Connect(function()
         if playerESP then
             task.wait(1.5)
@@ -1188,7 +2221,9 @@ local function hookMM2Player(player)
     end)
 end
 
-for _, player in ipairs(Players:GetPlayers()) do hookMM2Player(player) end
+for _, player in ipairs(Players:GetPlayers()) do
+    hookMM2Player(player)
+end
 Players.PlayerAdded:Connect(hookMM2Player)
 Players.PlayerRemoving:Connect(function(player)
     if espRespawnConns[player] then
@@ -1212,17 +2247,23 @@ end
 
 local function getMap()
     for _, o in ipairs(workspace:GetChildren()) do
-        if o:FindFirstChild("CoinContainer") and o:FindFirstChild("Spawns") then return o end
+        if o:FindFirstChild("CoinContainer") and o:FindFirstChild("Spawns") then
+            return o
+        end
     end
     return nil
 end
 
 local function getPredictedPosition(player, offset)
-    if not player or not player.Character then return Vector3.new(0,0,0) end
+    if not player or not player.Character then
+        return Vector3.new(0, 0, 0)
+    end
     local char = player.Character
     local upper = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
-    local hum   = char:FindFirstChild("Humanoid")
-    if not upper or not hum then return Vector3.new(0,0,0) end
+    local hum = char:FindFirstChild("Humanoid")
+    if not upper or not hum then
+        return Vector3.new(0, 0, 0)
+    end
     local velocity = upper.AssemblyLinearVelocity
     local moveDir = hum.MoveDirection
     local predicted = upper.Position + (velocity * Vector3.new(0.75, 0.5, 0.75)) * (offset / 15) + moveDir * offset
@@ -1232,31 +2273,37 @@ end
 
 local function doShootMurderer()
     if findSheriff() ~= LocalPlayer then
-        notify("Shoot", "You're not sheriff/hero."); return
+        notify("Shoot", "You're not sheriff/hero.")
+        return
     end
     local murderer = findMurderer() or findSheriffThatsNotMe()
     if not murderer then
-        notify("Shoot", "No target."); return
+        notify("Shoot", "No target.")
+        return
     end
     local char = LocalPlayer.Character
-    if not char then return end
+    if not char then
+        return
+    end
     if not char:FindFirstChild("Gun") then
         local hum = char:FindFirstChild("Humanoid")
         if LocalPlayer.Backpack:FindFirstChild("Gun") then
             hum:EquipTool(LocalPlayer.Backpack:FindFirstChild("Gun"))
             task.wait(0.1)
         else
-            notify("Shoot", "No gun."); return
+            notify("Shoot", "No gun.")
+            return
         end
     end
     local hrp = murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then
-        notify("Shoot", "No HRP."); return
+        notify("Shoot", "No HRP.")
+        return
     end
     local predicted = getPredictedPosition(murderer, shootOffset)
     local args
     if instakillshoot then
-        args = { CFrame.new(hrp.Position + Vector3.new(0,1,0)), CFrame.new(hrp.Position) }
+        args = { CFrame.new(hrp.Position + Vector3.new(0, 1, 0)), CFrame.new(hrp.Position) }
     else
         args = { CFrame.new(char.RightHand.Position), CFrame.new(predicted) }
     end
@@ -1267,41 +2314,58 @@ end
 
 local function doKnifeThrow(silent)
     if findMurderer() ~= LocalPlayer then
-        if not silent then notify("Knife", "You're not murderer.") end
+        if not silent then
+            notify("Knife", "You're not murderer.")
+        end
         return
     end
     local char = LocalPlayer.Character
-    if not char then return end
+    if not char then
+        return
+    end
     if not char:FindFirstChild("Knife") then
         local hum = char:FindFirstChild("Humanoid")
         if LocalPlayer.Backpack:FindFirstChild("Knife") then
             hum:EquipTool(LocalPlayer.Backpack:FindFirstChild("Knife"))
             task.wait(0.1)
         else
-            if not silent then notify("Knife", "No knife.") end
+            if not silent then
+                notify("Knife", "No knife.")
+            end
             return
         end
     end
     local nearest, shortest = nil, math.huge
     local lhrp = char:FindFirstChild("HumanoidRootPart")
-    if not lhrp then return end
+    if not lhrp then
+        return
+    end
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character then
             local ohrp = p.Character:FindFirstChild("HumanoidRootPart")
             if ohrp then
                 local d = (lhrp.Position - ohrp.Position).Magnitude
-                if d < shortest then shortest = d; nearest = p end
+                if d < shortest then
+                    shortest = d
+                    nearest = p
+                end
             end
         end
     end
     if not (nearest and nearest.Character) then
-        if not silent then notify("Knife", "No target.") end
+        if not silent then
+            notify("Knife", "No target.")
+        end
         return
     end
     local nhrp = nearest.Character:FindFirstChild("HumanoidRootPart")
-    if not nhrp then return end
+    if not nhrp then
+        return
+    end
     local args = { CFrame.new(char.RightHand.Position), CFrame.new(getPredictedPosition(nearest, shootOffset + 1)) }
-    if spawnAtPlayer then args[1] = CFrame.new(nhrp.Position + (nhrp.CFrame.LookVector * 5)) end
+    if spawnAtPlayer then
+        args[1] = CFrame.new(nhrp.Position + (nhrp.CFrame.LookVector * 5))
+    end
     pcall(function()
         char:WaitForChild("Knife", 2):WaitForChild("Events", 2):WaitForChild("KnifeThrown", 2):FireServer(unpack(args))
     end)
@@ -1309,14 +2373,14 @@ end
 
 local FLICK_BIND = "FlickShootCamera"
 local FLICK = {
-    spin          = math.rad(210),
-    spinTime      = 0.18,
-    minHoldTime   = 0.06,
-    maxHoldTime   = 0.30,
-    returnTime    = 0.20,
-    cooldown      = 0.35,
-    searchRange   = math.huge,
-    maxDuration   = 2.5,
+    spin = math.rad(190),
+    spinTime = 0.18,
+    minHoldTime = 0.06,
+    maxHoldTime = 0.30,
+    returnTime = 0.20,
+    cooldown = 0.35,
+    searchRange = math.huge,
+    maxDuration = 2.5,
 }
 
 local TWO_PI = math.pi * 2
@@ -1324,7 +2388,9 @@ local TWO_PI = math.pi * 2
 local function flickWrap(a)
     return (a + math.pi) % TWO_PI - math.pi
 end
-local function easeOut(t) return 1 - (1 - t) * (1 - t) end
+local function easeOut(t)
+    return 1 - (1 - t) * (1 - t)
+end
 local function easeInOut(t)
     return t < 0.5 and 2 * t * t or 1 - ((-2 * t + 2) ^ 2) / 2
 end
@@ -1333,7 +2399,9 @@ local function getLiveHrp(plr)
     local c = plr and plr.Character
     local h = c and c:FindFirstChildOfClass("Humanoid")
     local r = c and c:FindFirstChild("HumanoidRootPart")
-    if h and h.Health > 0 and r then return r end
+    if h and h.Health > 0 and r then
+        return r
+    end
     return nil
 end
 
@@ -1347,13 +2415,13 @@ local function resolveFlickTarget(fromPos)
         if plr ~= LocalPlayer then
             local hrp = getLiveHrp(plr)
             local backpack = plr:FindFirstChild("Backpack")
-            local hasKnife = plr.Character and (
-                plr.Character:FindFirstChild("Knife")
-                or (backpack and backpack:FindFirstChild("Knife"))
-            )
+            local hasKnife = plr.Character
+                and (plr.Character:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife")))
             if hrp and hasKnife then
                 local d = (hrp.Position - fromPos).Magnitude
-                if d <= bestDist then best, bestDist = plr, d end
+                if d <= bestDist then
+                    best, bestDist = plr, d
+                end
             end
         end
     end
@@ -1362,22 +2430,32 @@ end
 
 local function flickPredict(target, hrp)
     local ok, pos = pcall(getPredictedPosition, target, shootOffset)
-    if ok and typeof(pos) == "Vector3" then return pos end
+    if ok and typeof(pos) == "Vector3" then
+        return pos
+    end
     return hrp.Position
 end
 
 local function runFlick(char, hum, myHrp, target)
     local cam = workspace.CurrentCamera
-    if not cam then return end
+    if not cam then
+        return
+    end
 
     if not char:FindFirstChild("Gun") then
         local gunTool = LocalPlayer.Backpack:FindFirstChild("Gun")
-        if not gunTool then notify("Flick Shoot", "No gun."); return end
+        if not gunTool then
+            notify("Flick Shoot", "No gun.")
+            return
+        end
         hum:EquipTool(gunTool)
         task.wait(0.12)
     end
     local targetHrp = getLiveHrp(target)
-    if not targetHrp then notify("Flick Shoot", "No HRP."); return end
+    if not targetHrp then
+        notify("Flick Shoot", "No HRP.")
+        return
+    end
 
     local origCFrame = cam.CFrame
     local origFocus = cam.Focus
@@ -1402,17 +2480,26 @@ local function runFlick(char, hum, myHrp, target)
 
     local restored = false
     local function restore()
-        if restored then return end
+        if restored then
+            return
+        end
         restored = true
         currentYaw = nil
-        if physicsConn then physicsConn:Disconnect(); physicsConn = nil end
-        pcall(function() RunService:UnbindFromRenderStep(FLICK_BIND) end)
+        if physicsConn then
+            physicsConn:Disconnect()
+            physicsConn = nil
+        end
+        pcall(function()
+            RunService:UnbindFromRenderStep(FLICK_BIND)
+        end)
         pcall(function()
             if myHrp.Parent then
                 myHrp.CFrame = CFrame.new(myHrp.Position) * CFrame.Angles(0, origHrpYaw, 0)
                 myHrp.AssemblyAngularVelocity = Vector3.zero
             end
-            if hum.Parent then hum.AutoRotate = origAutoRotate end
+            if hum.Parent then
+                hum.AutoRotate = origAutoRotate
+            end
         end)
         pcall(function()
             if myHrp.Parent then
@@ -1424,7 +2511,9 @@ local function runFlick(char, hum, myHrp, target)
                 cam.Focus = origFocus
             end
             cam.FieldOfView = origFov
-            if origSubject then cam.CameraSubject = origSubject end
+            if origSubject then
+                cam.CameraSubject = origSubject
+            end
             cam.CameraType = origType
         end)
     end
@@ -1445,7 +2534,9 @@ local function runFlick(char, hum, myHrp, target)
     local function fire()
         local gun = char:FindFirstChild("Gun")
         local shoot = gun and gun:FindFirstChild("Shoot")
-        if not shoot then return end
+        if not shoot then
+            return
+        end
         local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm") or myHrp
         local predicted = flickPredict(target, getLiveHrp(target) or targetHrp)
         shoot:FireServer(CFrame.new(hand.Position), CFrame.new(predicted))
@@ -1455,11 +2546,10 @@ local function runFlick(char, hum, myHrp, target)
     local startTime = os.clock()
     local phase, phaseStart = 1, startTime
     local finalYaw = origYaw - FLICK.spin
-    local returnDelta = flickWrap(origYaw - finalYaw)
+    local returnDelta = origYaw - finalYaw
 
     local function step()
-        if not (char.Parent and myHrp.Parent and hum.Health > 0)
-            or os.clock() - startTime > FLICK.maxDuration then
+        if not (char.Parent and myHrp.Parent and hum.Health > 0) or os.clock() - startTime > FLICK.maxDuration then
             finished = true
             return
         end
@@ -1469,7 +2559,9 @@ local function runFlick(char, hum, myHrp, target)
         if phase == 1 then
             local a = math.clamp((now - phaseStart) / FLICK.spinTime, 0, 1)
             yaw = origYaw - FLICK.spin * easeOut(a)
-            if a >= 1 then phase, phaseStart = 2, now end
+            if a >= 1 then
+                phase, phaseStart = 2, now
+            end
         elseif phase == 2 then
             yaw = finalYaw
             if now - phaseStart >= holdTime then
@@ -1481,7 +2573,9 @@ local function runFlick(char, hum, myHrp, target)
         else
             local a = math.clamp((now - phaseStart) / FLICK.returnTime, 0, 1)
             yaw = finalYaw + returnDelta * easeInOut(a)
-            if a >= 1 then finished = true end
+            if a >= 1 then
+                finished = true
+            end
         end
 
         apply(yaw)
@@ -1497,35 +2591,52 @@ local function runFlick(char, hum, myHrp, target)
         end)
         RunService:BindToRenderStep(FLICK_BIND, Enum.RenderPriority.Camera.Value + 1, function()
             local sok, serr = pcall(step)
-            if not sok then stepErr = serr; finished = true end
+            if not sok then
+                stepErr = serr
+                finished = true
+            end
         end)
-        while not finished do task.wait() end
+        while not finished do
+            task.wait()
+        end
     end)
 
     restore()
-    if not ok then warn("Flick error:", err) end
-    if stepErr then warn("Flick step error:", stepErr) end
+    if not ok then
+        warn("Flick error:", err)
+    end
+    if stepErr then
+        warn("Flick step error:", stepErr)
+    end
 end
 
 local function doFlickShoot()
-    if flickCooldown then return end
+    if flickCooldown then
+        return
+    end
     if findSheriff() ~= LocalPlayer then
-        notify("Flick Shoot", "You're not sheriff/hero."); return
+        notify("Flick Shoot", "You're not sheriff/hero.")
+        return
     end
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local myHrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not (hum and myHrp) or hum.Health <= 0 then return end
+    if not (hum and myHrp) or hum.Health <= 0 then
+        return
+    end
 
     local target = resolveFlickTarget(myHrp.Position)
     if not target then
-        notify("Flick Shoot", "No target."); return
+        notify("Flick Shoot", "No target.")
+        return
     end
 
     flickCooldown = true
     task.spawn(function()
         local ok, err = pcall(runFlick, char, hum, myHrp, target)
-        if not ok then warn("Flick error:", err) end
+        if not ok then
+            warn("Flick error:", err)
+        end
         task.wait(FLICK.cooldown)
         flickCooldown = false
     end)
@@ -1533,7 +2644,8 @@ end
 
 mm2Tab:CreateSection({ name = "ESPs" })
 mm2Tab:CreateToggle({
-    name = "Player ESP", flag = "MM2_PlayerESP",
+    name = "Player ESP",
+    flag = "MM2_PlayerESP",
     callback = function(state)
         playerESP = state
         if state then
@@ -1544,13 +2656,25 @@ mm2Tab:CreateToggle({
     end,
 })
 mm2Tab:CreateToggle({
-    name = "Dropped Gun ESP", flag = "MM2_GunESP",
+    name = "Dropped Gun ESP",
+    flag = "MM2_GunESP",
     callback = function(state)
         gunDropESP = state
         if state then
             local map = getMap()
             if map and map:FindFirstChild("GunDrop") then
-                mm2Esp:Add(map:FindFirstChild("GunDrop"), { AccentColor = Color3.new(0.9529,1,0.0745), ArrowShow = true, ArrowMinDistance = 999999, ArrowSize = UDim2.new(0,40,0,40), LabelText = "Dropped gun!", ShowLabel = true, GroupName = "gun" })
+                mm2Esp:Add(
+                    map:FindFirstChild("GunDrop"),
+                    {
+                        AccentColor = Color3.new(0.9529, 1, 0.0745),
+                        ArrowShow = true,
+                        ArrowMinDistance = 999999,
+                        ArrowSize = UDim2.new(0, 40, 0, 40),
+                        LabelText = "Dropped gun!",
+                        ShowLabel = true,
+                        GroupName = "gun",
+                    }
+                )
             end
         else
             mm2Esp:RemoveGroup("gun")
@@ -1558,14 +2682,24 @@ mm2Tab:CreateToggle({
     end,
 })
 mm2Tab:CreateToggle({
-    name = "Trap ESP", flag = "MM2_TrapESP",
+    name = "Trap ESP",
+    flag = "MM2_TrapESP",
     callback = function(state)
         trapDetection = state
         if state then
             for _, v in ipairs(workspace:GetDescendants()) do
                 if v.Name == "Trap" and (v.Parent:IsA("Folder") or v.Parent:IsA("Model")) then
                     v.Transparency = 0
-                    mm2Esp:Add(v, { AccentColor = Color3.new(1,0,0), ArrowShow = false, ShowLabel = true, LabelText = "Trap", GroupName = "trap" })
+                    mm2Esp:Add(
+                        v,
+                        {
+                            AccentColor = Color3.new(1, 0, 0),
+                            ArrowShow = false,
+                            ShowLabel = true,
+                            LabelText = "Trap",
+                            GroupName = "trap",
+                        }
+                    )
                 end
             end
         else
@@ -1574,8 +2708,12 @@ mm2Tab:CreateToggle({
     end,
 })
 mm2Tab:CreateToggle({
-    name = "Hide My Own ESP", flag = "MM2_HideMe",
-    callback = function(state) hideMeEsp = state; reloadMM2ESP() end,
+    name = "Hide My Own ESP",
+    flag = "MM2_HideMe",
+    callback = function(state)
+        hideMeEsp = state
+        reloadMM2ESP()
+    end,
 })
 
 mm2Tab:CreateSection({ name = "Tools" })
@@ -1584,7 +2722,9 @@ mm2Tab:CreateButton({
     callback = doShootMurderer,
 })
 mm2Tab:CreateToggle({
-    name = "Floating Shoot Button", flag = "MM2_FloatingShoot", forgetState = true,
+    name = "Floating Shoot Button",
+    flag = "MM2_FloatingShoot",
+    forgetState = true,
     callback = function(state)
         if state then
             makeFloatingButton("ShootMurderer", "Shoot Murderer", doShootMurderer)
@@ -1598,7 +2738,9 @@ mm2Tab:CreateButton({
     callback = doFlickShoot,
 })
 mm2Tab:CreateToggle({
-    name = "Floating Flick Shoot", flag = "MM2_FloatingFlick", forgetState = true,
+    name = "Floating Flick Shoot",
+    flag = "MM2_FloatingFlick",
+    forgetState = true,
     callback = function(state)
         if state then
             makeFloatingButton("FlickShoot", "Flick Shoot", doFlickShoot)
@@ -1609,21 +2751,30 @@ mm2Tab:CreateToggle({
 })
 mm2Tab:CreateButton({
     name = "Knife Throw to Closest",
-    callback = function() doKnifeThrow(false) end,
+    callback = function()
+        doKnifeThrow(false)
+    end,
 })
 mm2Tab:CreateToggle({
-    name = "Floating Knife Button", flag = "MM2_FloatingKnife", forgetState = true,
+    name = "Floating Knife Button",
+    flag = "MM2_FloatingKnife",
+    forgetState = true,
     callback = function(state)
         if state then
-            makeFloatingButton("KnifeThrow", "Throw Knife", function() doKnifeThrow(false) end)
+            makeFloatingButton("KnifeThrow", "Throw Knife", function()
+                doKnifeThrow(false)
+            end)
         else
             removeFloatingButton("KnifeThrow")
         end
     end,
 })
 mm2Tab:CreateToggle({
-    name = "Auto Knife Throw", flag = "MM2_AutoKnife",
-    callback = function(state) loopThrow = state end,
+    name = "Auto Knife Throw",
+    flag = "MM2_AutoKnife",
+    callback = function(state)
+        loopThrow = state
+    end,
 })
 task.spawn(function()
     while task.wait(1.5) do
@@ -1636,17 +2787,23 @@ mm2Tab:CreateButton({
     name = "Delayed Shoot Murderer",
     callback = function()
         if findSheriff() ~= LocalPlayer then
-            notify("Shoot", "You're not sheriff."); return
+            notify("Shoot", "You're not sheriff.")
+            return
         end
         local murderer = findMurderer() or findSheriffThatsNotMe()
         if not murderer then
-            notify("Shoot", "No target."); return
+            notify("Shoot", "No target.")
+            return
         end
         local char = LocalPlayer.Character
-        if not char then return end
+        if not char then
+            return
+        end
         if not char:FindFirstChild("Gun") then
             local hum = char:FindFirstChild("Humanoid")
-            if LocalPlayer.Backpack:FindFirstChild("Gun") then hum:EquipTool(LocalPlayer.Backpack:FindFirstChild("Gun")) end
+            if LocalPlayer.Backpack:FindFirstChild("Gun") then
+                hum:EquipTool(LocalPlayer.Backpack:FindFirstChild("Gun"))
+            end
         end
         RunService.Stepped:Connect(function()
             local hrp = murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart")
@@ -1669,12 +2826,18 @@ mm2Tab:CreateButton({
     end,
 })
 mm2Tab:CreateInput({
-    name = "Shoot Offset", placeholder = "2.8",
-    callback = function(text) shootOffset = tonumber(text) or 2.8 end,
+    name = "Shoot Offset",
+    placeholder = "2.8",
+    callback = function(text)
+        shootOffset = tonumber(text) or 2.8
+    end,
 })
 mm2Tab:CreateInput({
-    name = "Offset-to-Ping Multiplier", placeholder = "1",
-    callback = function(text) offsetToPingMult = tonumber(text) or 1 end,
+    name = "Offset-to-Ping Multiplier",
+    placeholder = "1",
+    callback = function(text)
+        offsetToPingMult = tonumber(text) or 1
+    end,
 })
 
 mm2Tab:CreateSection({ name = "Fun" })
@@ -1684,7 +2847,9 @@ mm2Tab:CreateButton({
         local Cam = workspace.CurrentCamera
         local Pos, Char = Cam.CFrame, LocalPlayer.Character
         local Human = Char and Char:FindFirstChildWhichIsA("Humanoid")
-        if not Human then return end
+        if not Human then
+            return
+        end
         local nHuman = Human:Clone()
         nHuman.Parent, LocalPlayer.Character = Char, nil
         nHuman:SetStateEnabled(15, false)
@@ -1697,7 +2862,11 @@ mm2Tab:CreateButton({
         Cam.CFrame = Pos
         nHuman.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
         local animate = Char:FindFirstChild("Animate")
-        if animate then animate.Disabled = true; task.wait(); animate.Disabled = false end
+        if animate then
+            animate.Disabled = true
+            task.wait()
+            animate.Disabled = false
+        end
         nHuman.Health = nHuman.MaxHealth
     end,
 })
@@ -1705,16 +2874,19 @@ mm2Tab:CreateButton({
     name = "Kill Everyone (Murderer)",
     callback = function()
         if findMurderer() ~= LocalPlayer then
-            notify("Kill All", "You're not murderer."); return
+            notify("Kill All", "You're not murderer.")
+            return
         end
         local char = LocalPlayer.Character
         if not char or not char:FindFirstChild("Knife") then
-            notify("Kill All", "No knife equipped."); return
+            notify("Kill All", "No knife equipped.")
+            return
         end
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 p.Character.HumanoidRootPart.Anchored = true
-                p.Character.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + char.HumanoidRootPart.CFrame.LookVector * 1
+                p.Character.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame
+                    + char.HumanoidRootPart.CFrame.LookVector * 1
             end
         end
         pcall(function()
@@ -1726,14 +2898,18 @@ mm2Tab:CreateButton({
     name = "Hold Everyone Hostage",
     callback = function()
         if findMurderer() ~= LocalPlayer then
-            notify("Hostage", "You're not murderer."); return
+            notify("Hostage", "You're not murderer.")
+            return
         end
         local char = LocalPlayer.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+        if not char or not char:FindFirstChild("HumanoidRootPart") then
+            return
+        end
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 p.Character.HumanoidRootPart.Anchored = true
-                p.Character.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + char.HumanoidRootPart.CFrame.LookVector * 5
+                p.Character.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame
+                    + char.HumanoidRootPart.CFrame.LookVector * 5
             end
         end
         notify("Hostage", "All players held in place.")
@@ -1744,15 +2920,21 @@ mm2Tab:CreateButton({
     callback = function()
         local lobby = workspace:FindFirstChild("Lobby")
         local char = LocalPlayer.Character
-        local spawnLoc = lobby and lobby:FindFirstChild("Spawns") and lobby.Spawns:FindFirstChildWhichIsA("SpawnLocation")
-        if char and spawnLoc then char:MoveTo(spawnLoc.Position) end
+        local spawnLoc = lobby
+            and lobby:FindFirstChild("Spawns")
+            and lobby.Spawns:FindFirstChildWhichIsA("SpawnLocation")
+        if char and spawnLoc then
+            char:MoveTo(spawnLoc.Position)
+        end
     end,
 })
 mm2Tab:CreateButton({
     name = "Teleport to Map",
     callback = function()
         local map = getMap()
-        if not map then return end
+        if not map then
+            return
+        end
         local spawns = map:FindFirstChild("Spawns")
         if spawns then
             local list = spawns:GetChildren()
@@ -1767,37 +2949,57 @@ mm2Tab:CreateButton({
     name = "Fling Sheriff",
     callback = function()
         local s = findSheriff()
-        if s then miniFling(s) else notify("Fling", "No sheriff.") end
+        if s then
+            miniFling(s)
+        else
+            notify("Fling", "No sheriff.")
+        end
     end,
 })
 mm2Tab:CreateButton({
     name = "Fling Murderer",
     callback = function()
         local m = findMurderer()
-        if m then miniFling(m) else notify("Fling", "No murderer.") end
+        if m then
+            miniFling(m)
+        else
+            notify("Fling", "No murderer.")
+        end
     end,
 })
 mm2Tab:CreateButton({
     name = "Copy Murderer Username",
     callback = function()
         local m = findMurderer()
-        if m and setclipboard then setclipboard(m.Name); notify("Copy", "Copied " .. m.Name) end
+        if m and setclipboard then
+            setclipboard(m.Name)
+            notify("Copy", "Copied " .. m.Name)
+        end
     end,
 })
 mm2Tab:CreateButton({
     name = "Copy Sheriff Username",
     callback = function()
         local s = findSheriff()
-        if s and setclipboard then setclipboard(s.Name); notify("Copy", "Copied " .. s.Name) end
+        if s and setclipboard then
+            setclipboard(s.Name)
+            notify("Copy", "Copied " .. s.Name)
+        end
     end,
 })
 mm2Tab:CreateToggle({
-    name = "Auto Get Dropped Gun", flag = "MM2_AutoGun",
-    callback = function(state) autoGetDroppedGun = state end,
+    name = "Auto Get Dropped Gun",
+    flag = "MM2_AutoGun",
+    callback = function(state)
+        autoGetDroppedGun = state
+    end,
 })
 mm2Tab:CreateToggle({
-    name = "Experimental Gun Take", flag = "MM2_ExpGun",
-    callback = function(state) gunDropTakeExp = state end,
+    name = "Experimental Gun Take",
+    flag = "MM2_ExpGun",
+    callback = function(state)
+        gunDropTakeExp = state
+    end,
 })
 mm2Tab:CreateButton({
     name = "Send Roles to Chat",
@@ -1826,7 +3028,9 @@ if game.GameId == 372226183 then
     local function getBeast()
         for _, player in ipairs(Players:GetPlayers()) do
             local c = player.Character
-            if c and c:FindFirstChild("BeastPowers") then return player end
+            if c and c:FindFirstChild("BeastPowers") then
+                return player
+            end
         end
     end
 
@@ -1836,9 +3040,28 @@ if game.GameId == 372226183 then
             for _, player in ipairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer and player.Character then
                     if player == getBeast() then
-                        ftfEsp:Add(player.Character, { AccentColor = Color3.new(1,0,0), ArrowShow = not ftfHideArrows, ArrowMinDistance = 999999, ArrowSize = UDim2.new(0,40,0,40), LabelText = "Beast", ShowLabel = not ftfHideArrows, GroupName = "players" })
+                        ftfEsp:Add(
+                            player.Character,
+                            {
+                                AccentColor = Color3.new(1, 0, 0),
+                                ArrowShow = not ftfHideArrows,
+                                ArrowMinDistance = 999999,
+                                ArrowSize = UDim2.new(0, 40, 0, 40),
+                                LabelText = "Beast",
+                                ShowLabel = not ftfHideArrows,
+                                GroupName = "players",
+                            }
+                        )
                     else
-                        ftfEsp:Add(player.Character, { AccentColor = Color3.new(0,1,0), ArrowShow = false, ShowLabel = false, GroupName = "players" })
+                        ftfEsp:Add(
+                            player.Character,
+                            {
+                                AccentColor = Color3.new(0, 1, 0),
+                                ArrowShow = false,
+                                ShowLabel = false,
+                                GroupName = "players",
+                            }
+                        )
                     end
                 end
             end
@@ -1847,9 +3070,29 @@ if game.GameId == 372226183 then
             for _, obj in ipairs(workspace:GetDescendants()) do
                 if obj.Name == "ComputerTable" then
                     if obj.Screen and obj.Screen.Color == Color3.fromRGB(40, 127, 71) then
-                        ftfEsp:Add(obj, { AccentColor = Color3.new(0.13,0.33,0.0078), ArrowShow = false, ArrowShowDistanceText = false, ShowLabel = false, GroupName = "pcs" })
+                        ftfEsp:Add(
+                            obj,
+                            {
+                                AccentColor = Color3.new(0.13, 0.33, 0.0078),
+                                ArrowShow = false,
+                                ArrowShowDistanceText = false,
+                                ShowLabel = false,
+                                GroupName = "pcs",
+                            }
+                        )
                     else
-                        ftfEsp:Add(obj, { AccentColor = Color3.new(0,0.37,1), ArrowShow = not ftfHideArrows, ArrowMinDistance = 99999, ArrowShowDistanceText = false, ArrowSize = UDim2.new(0,10,0,10), ShowLabel = false, GroupName = "pcs" })
+                        ftfEsp:Add(
+                            obj,
+                            {
+                                AccentColor = Color3.new(0, 0.37, 1),
+                                ArrowShow = not ftfHideArrows,
+                                ArrowMinDistance = 99999,
+                                ArrowShowDistanceText = false,
+                                ArrowSize = UDim2.new(0, 10, 0, 10),
+                                ShowLabel = false,
+                                GroupName = "pcs",
+                            }
+                        )
                     end
                 end
             end
@@ -1857,20 +3100,34 @@ if game.GameId == 372226183 then
         if ftfPods then
             for _, obj in ipairs(workspace:GetDescendants()) do
                 if obj.Name == "FreezePod" then
-                    ftfEsp:Add(obj, { AccentColor = Color3.new(0,1,1), ArrowShow = false, ShowLabel = false, GroupName = "pods" })
+                    ftfEsp:Add(
+                        obj,
+                        { AccentColor = Color3.new(0, 1, 1), ArrowShow = false, ShowLabel = false, GroupName = "pods" }
+                    )
                 end
             end
         end
         if ftfExits then
             for _, obj in ipairs(workspace:GetDescendants()) do
                 if obj.Name == "ExitDoor" then
-                    ftfEsp:Add(obj, { AccentColor = Color3.new(1,1,0), ArrowShow = false, ShowLabel = false, GroupName = "exits" })
+                    ftfEsp:Add(
+                        obj,
+                        { AccentColor = Color3.new(1, 1, 0), ArrowShow = false, ShowLabel = false, GroupName = "exits" }
+                    )
                 end
             end
         end
         if ftfLockers then
             for _, obj in ipairs(game:GetService("CollectionService"):GetTagged("LOCKER")) do
-                ftfEsp:Add(obj, { AccentColor = Color3.new(1,0.0549,0.6235), ArrowShow = false, ShowLabel = false, GroupName = "lockers" })
+                ftfEsp:Add(
+                    obj,
+                    {
+                        AccentColor = Color3.new(1, 0.0549, 0.6235),
+                        ArrowShow = false,
+                        ShowLabel = false,
+                        GroupName = "lockers",
+                    }
+                )
             end
         end
     end
@@ -1893,12 +3150,54 @@ if game.GameId == 372226183 then
     end)
 
     ftfTab:CreateSection({ name = "ESPs" })
-    ftfTab:CreateToggle({ name = "Players", flag = "FTF_Players", callback = function(s) ftfPlayers = s; reloadFTFESP() end })
-    ftfTab:CreateToggle({ name = "PCs",     flag = "FTF_PCs",     callback = function(s) ftfPCs = s;     reloadFTFESP() end })
-    ftfTab:CreateToggle({ name = "Pods",    flag = "FTF_Pods",    callback = function(s) ftfPods = s;    reloadFTFESP() end })
-    ftfTab:CreateToggle({ name = "Exits",   flag = "FTF_Exits",   callback = function(s) ftfExits = s;   reloadFTFESP() end })
-    ftfTab:CreateToggle({ name = "Lockers", flag = "FTF_Lockers", callback = function(s) ftfLockers = s; reloadFTFESP() end })
-    ftfTab:CreateToggle({ name = "Hide Arrows & Labels", flag = "FTF_HideArrows", callback = function(s) ftfHideArrows = s; reloadFTFESP() end })
+    ftfTab:CreateToggle({
+        name = "Players",
+        flag = "FTF_Players",
+        callback = function(s)
+            ftfPlayers = s
+            reloadFTFESP()
+        end,
+    })
+    ftfTab:CreateToggle({
+        name = "PCs",
+        flag = "FTF_PCs",
+        callback = function(s)
+            ftfPCs = s
+            reloadFTFESP()
+        end,
+    })
+    ftfTab:CreateToggle({
+        name = "Pods",
+        flag = "FTF_Pods",
+        callback = function(s)
+            ftfPods = s
+            reloadFTFESP()
+        end,
+    })
+    ftfTab:CreateToggle({
+        name = "Exits",
+        flag = "FTF_Exits",
+        callback = function(s)
+            ftfExits = s
+            reloadFTFESP()
+        end,
+    })
+    ftfTab:CreateToggle({
+        name = "Lockers",
+        flag = "FTF_Lockers",
+        callback = function(s)
+            ftfLockers = s
+            reloadFTFESP()
+        end,
+    })
+    ftfTab:CreateToggle({
+        name = "Hide Arrows & Labels",
+        flag = "FTF_HideArrows",
+        callback = function(s)
+            ftfHideArrows = s
+            reloadFTFESP()
+        end,
+    })
 
     ftfTab:CreateSection({ name = "Tools" })
     ftfTab:CreateButton({
@@ -1914,9 +3213,14 @@ if game.GameId == 372226183 then
         name = "Flashlight",
         callback = function()
             local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
+            if not hrp then
+                return
+            end
             local existing = hrp:FindFirstChildOfClass("PointLight")
-            if existing then existing:Destroy() return end
+            if existing then
+                existing:Destroy()
+                return
+            end
             local light = Instance.new("PointLight", hrp)
             light.Brightness = 2.5
             light.Range = 999999
@@ -1926,18 +3230,26 @@ if game.GameId == 372226183 then
     RunService.Heartbeat:Connect(function()
         if wslock then
             local h = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if h then h.WalkSpeed = ftfWs end
+            if h then
+                h.WalkSpeed = ftfWs
+            end
         end
     end)
 
     ftfTab:CreateInput({
-        name = "Locked Walkspeed", placeholder = "18",
+        name = "Locked Walkspeed",
+        placeholder = "18",
         callback = function(text)
             ftfWs = tonumber(text) or 18
             wslock = true
         end,
     })
-    ftfTab:CreateButton({ name = "Unlock Walkspeed", callback = function() wslock = false end })
+    ftfTab:CreateButton({
+        name = "Unlock Walkspeed",
+        callback = function()
+            wslock = false
+        end,
+    })
 end
 
 if game.GameId == 6331902150 then
@@ -1948,16 +3260,39 @@ if game.GameId == 6331902150 then
     local prioritizeMedkit, infiniteStamina, noCooldownSolve = false, false, false
 
     local function addForsakenPlayer(p)
-        forsakenEsp:Add(p, { AccentColor = Color3.new(0.149,1,0), ArrowShow = false, ShowLabel = false, GroupName = "players" })
+        forsakenEsp:Add(
+            p,
+            { AccentColor = Color3.new(0.149, 1, 0), ArrowShow = false, ShowLabel = false, GroupName = "players" }
+        )
     end
     local function addForsakenKiller(k)
-        forsakenEsp:Add(k, { AccentColor = Color3.new(1,0,0), ArrowShow = true, ArrowMinDistance = 999999, ArrowSize = UDim2.new(0,40,0,40), LabelText = "Killer", ShowLabel = true, GroupName = "players" })
+        forsakenEsp:Add(
+            k,
+            {
+                AccentColor = Color3.new(1, 0, 0),
+                ArrowShow = true,
+                ArrowMinDistance = 999999,
+                ArrowSize = UDim2.new(0, 40, 0, 40),
+                LabelText = "Killer",
+                ShowLabel = true,
+                GroupName = "players",
+            }
+        )
     end
     local function addForsakenItem(i)
-        local cfg = { AccentColor = Color3.new(0.031,0.917,1), ArrowShow = false, ShowLabel = false, GroupName = "items" }
+        local cfg =
+            { AccentColor = Color3.new(0.031, 0.917, 1), ArrowShow = false, ShowLabel = false, GroupName = "items" }
         if prioritizeMedkit and i.Name == "Medkit" then
             notify("Forsaken", "Medkit spawned!")
-            cfg = { AccentColor = Color3.new(1,1,1), ArrowShow = true, ArrowMinDistance = 999999, ArrowSize = UDim2.new(0,40,0,40), LabelText = "Medkit", ShowLabel = true, GroupName = "items" }
+            cfg = {
+                AccentColor = Color3.new(1, 1, 1),
+                ArrowShow = true,
+                ArrowMinDistance = 999999,
+                ArrowSize = UDim2.new(0, 40, 0, 40),
+                LabelText = "Medkit",
+                ShowLabel = true,
+                GroupName = "items",
+            }
         end
         forsakenEsp:Add(i, cfg)
     end
@@ -1966,32 +3301,61 @@ if game.GameId == 6331902150 then
         local pv = prog and prog.Value or 0
         local label = tostring(math.floor(pv)) .. "%"
         local show = pv < 100
-        local color = pv >= 100 and Color3.new(0,0.5,0) or Color3.new(0.984,1,0)
-        forsakenEsp:Add(g, { AccentColor = color, ArrowShow = show, ArrowMinDistance = 999999, ArrowSize = UDim2.new(0,20,0,20), ShowLabel = show, LabelText = label, GroupName = "generators" })
+        local color = pv >= 100 and Color3.new(0, 0.5, 0) or Color3.new(0.984, 1, 0)
+        forsakenEsp:Add(
+            g,
+            {
+                AccentColor = color,
+                ArrowShow = show,
+                ArrowMinDistance = 999999,
+                ArrowSize = UDim2.new(0, 20, 0, 20),
+                ShowLabel = show,
+                LabelText = label,
+                GroupName = "generators",
+            }
+        )
         if prog then
             prog.Changed:Connect(function()
                 local npv = prog.Value
                 local nlabel = tostring(math.floor(npv)) .. "%"
                 local nshow = npv < 100
-                local ncolor = npv >= 100 and Color3.new(0,0.5,0) or Color3.new(0.984,1,0)
+                local ncolor = npv >= 100 and Color3.new(0, 0.5, 0) or Color3.new(0.984, 1, 0)
                 forsakenEsp:Remove(g)
-                forsakenEsp:Add(g, { AccentColor = ncolor, ArrowShow = nshow, ArrowMinDistance = 999999, ArrowSize = UDim2.new(0,20,0,20), ShowLabel = nshow, LabelText = nlabel, GroupName = "generators" })
+                forsakenEsp:Add(
+                    g,
+                    {
+                        AccentColor = ncolor,
+                        ArrowShow = nshow,
+                        ArrowMinDistance = 999999,
+                        ArrowSize = UDim2.new(0, 20, 0, 20),
+                        ShowLabel = nshow,
+                        LabelText = nlabel,
+                        GroupName = "generators",
+                    }
+                )
             end)
         end
     end
 
     forsakenTab:CreateSection({ name = "ESPs" })
     forsakenTab:CreateToggle({
-        name = "Players", flag = "FS_Players",
+        name = "Players",
+        flag = "FS_Players",
         callback = function(s)
             fsPlayers = s
             if s then
                 local surv = workspace.Players and workspace.Players:FindFirstChild("Survivors")
                 local killers = workspace.Players and workspace.Players:FindFirstChild("Killers")
-                if surv then for _, p in ipairs(surv:GetChildren()) do addForsakenPlayer(p) end end
+                if surv then
+                    for _, p in ipairs(surv:GetChildren()) do
+                        addForsakenPlayer(p)
+                    end
+                end
                 if killers then
                     local k = killers:GetChildren()[1]
-                    if k then addForsakenKiller(k) end
+                    if k then
+                        addForsakenKiller(k)
+                    end
                 end
             else
                 forsakenEsp:RemoveGroup("players")
@@ -1999,14 +3363,17 @@ if game.GameId == 6331902150 then
         end,
     })
     forsakenTab:CreateToggle({
-        name = "Items", flag = "FS_Items",
+        name = "Items",
+        flag = "FS_Items",
         callback = function(s)
             fsItems = s
             if s then
                 local ingame = workspace.Map and workspace.Map:FindFirstChild("Ingame")
                 if ingame then
                     for _, i in ipairs(ingame:GetChildren()) do
-                        if i.Name ~= "Map" then addForsakenItem(i) end
+                        if i.Name ~= "Map" then
+                            addForsakenItem(i)
+                        end
                     end
                 end
             else
@@ -2015,7 +3382,8 @@ if game.GameId == 6331902150 then
         end,
     })
     forsakenTab:CreateToggle({
-        name = "Generators", flag = "FS_Generators",
+        name = "Generators",
+        flag = "FS_Generators",
         callback = function(s)
             fsGenerators = s
             if s then
@@ -2023,7 +3391,9 @@ if game.GameId == 6331902150 then
                 local map = ingame and ingame:FindFirstChild("Map")
                 if map then
                     for _, g in ipairs(map:GetChildren()) do
-                        if g.Name == "Generator" then addForsakenGenerator(g) end
+                        if g.Name == "Generator" then
+                            addForsakenGenerator(g)
+                        end
                     end
                 end
             else
@@ -2032,8 +3402,11 @@ if game.GameId == 6331902150 then
         end,
     })
     forsakenTab:CreateToggle({
-        name = "Prioritize Medkit", flag = "FS_Medkit",
-        callback = function(s) prioritizeMedkit = s end,
+        name = "Prioritize Medkit",
+        flag = "FS_Medkit",
+        callback = function(s)
+            prioritizeMedkit = s
+        end,
     })
 
     forsakenTab:CreateSection({ name = "Tools" })
@@ -2042,19 +3415,29 @@ if game.GameId == 6331902150 then
         name = "Finish Nearest Generator",
         callback = function()
             if solveCD and not noCooldownSolve then
-                notify("Forsaken", "Cooldown (4s)"); return
+                notify("Forsaken", "Cooldown (4s)")
+                return
             end
             solveCD = true
             local char = LocalPlayer.Character
-            if not char or not char.PrimaryPart then solveCD = false; return end
+            if not char or not char.PrimaryPart then
+                solveCD = false
+                return
+            end
             local ingame = workspace.Map and workspace.Map:FindFirstChild("Ingame")
             local map = ingame and ingame:FindFirstChild("Map")
-            if not map then solveCD = false; return end
+            if not map then
+                solveCD = false
+                return
+            end
             local closest, shortest = nil, math.huge
             for _, obj in ipairs(map:GetChildren()) do
                 if obj.Name == "Generator" and obj:IsA("Model") and obj.PrimaryPart then
                     local d = (char.PrimaryPart.Position - obj.PrimaryPart.Position).Magnitude
-                    if d < shortest then shortest = d; closest = obj end
+                    if d < shortest then
+                        shortest = d
+                        closest = obj
+                    end
                 end
             end
             if closest and closest:FindFirstChild("Remotes") then
@@ -2067,16 +3450,21 @@ if game.GameId == 6331902150 then
         end,
     })
     forsakenTab:CreateToggle({
-        name = "Bypass Solver Cooldown", flag = "FS_BypassCD",
-        callback = function(s) noCooldownSolve = s end,
+        name = "Bypass Solver Cooldown",
+        flag = "FS_BypassCD",
+        callback = function(s)
+            noCooldownSolve = s
+        end,
     })
     forsakenTab:CreateToggle({
-        name = "Infinite Stamina", flag = "FS_InfStamina",
+        name = "Infinite Stamina",
+        flag = "FS_InfStamina",
         callback = function(s)
             infiniteStamina = s
             if not s then
                 pcall(function()
-                    require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting).StaminaLossDisabled = false
+                    require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting).StaminaLossDisabled =
+                        false
                 end)
             end
         end,
@@ -2085,24 +3473,31 @@ if game.GameId == 6331902150 then
         while task.wait(1) do
             if infiniteStamina then
                 pcall(function()
-                    require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting).StaminaLossDisabled = true
+                    require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting).StaminaLossDisabled =
+                        true
                 end)
             end
         end
     end)
     forsakenTab:CreateInput({
-        name = "Sprint Speed", placeholder = "26 (default)",
+        name = "Sprint Speed",
+        placeholder = "26 (default)",
         callback = function(text)
             pcall(function()
-                require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting).SprintSpeed = tonumber(text) or 26
+                require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting).SprintSpeed = tonumber(
+                    text
+                ) or 26
             end)
         end,
     })
     forsakenTab:CreateInput({
-        name = "Stamina Gain Rate", placeholder = "20 (default)",
+        name = "Stamina Gain Rate",
+        placeholder = "20 (default)",
         callback = function(text)
             pcall(function()
-                require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting).StaminaGain = tonumber(text) or 20
+                require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting).StaminaGain = tonumber(
+                    text
+                ) or 20
             end)
         end,
     })
